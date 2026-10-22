@@ -311,9 +311,18 @@ export class GlpiClient {
     let total = 0;
     for (let page = 0; page < MAX_PAGES; page += 1) {
       const start = page * PAGE_SIZE;
-      const { data } = await this.call(
-        `/search/Ticket?${ticketSearchQuery(start, start + PAGE_SIZE - 1)}`,
-      );
+      let data;
+      try {
+        ({ data } = await this.call(
+          `/search/Ticket?${ticketSearchQuery(start, start + PAGE_SIZE - 1)}`,
+        ));
+      } catch (err) {
+        // Tickets solved or deleted between two pages: what was read stands.
+        if (page > 0 && err instanceof GlpiError && err.code === 'ERROR_RANGE_EXCEED_TOTAL') {
+          break;
+        }
+        throw err;
+      }
       if (!data || typeof data !== 'object' || !Number.isFinite(Number(data.totalcount))) {
         throw new GlpiError(ERROR_KINDS.NOT_GLPI, 'no totalcount in the ticket search', 200);
       }
@@ -325,6 +334,19 @@ export class GlpiClient {
       }
     }
     return { rows, total };
+  }
+
+  /** The highest ticket number the user sees, open or not (0 when none). */
+  async lastTicketId() {
+    const params = new URLSearchParams({
+      'forcedisplay[0]': String(FIELDS.ID),
+      sort: String(FIELDS.ID),
+      order: 'DESC',
+      range: '0-0',
+    });
+    const { data } = await this.call(`/search/Ticket?${params}`);
+    const id = Number(Array.isArray(data?.data) ? data.data[0]?.[FIELDS.ID] : 0);
+    return Number.isInteger(id) && id > 0 ? id : 0;
   }
 
   async ticket(id) {

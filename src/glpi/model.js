@@ -59,28 +59,54 @@ const list = (value) =>
  *   opened: string, solved: string, dueDate: string, late: boolean }>} newest first
  */
 export function parseTickets(rows) {
-  return (Array.isArray(rows) ? rows : [])
-    .filter((row) => row && typeof row === 'object' && int(row[FIELDS.ID]) > 0)
-    .map((row) => {
-      const id = int(row[FIELDS.ID]);
-      return {
-        id,
-        title: text(row[FIELDS.TITLE]) || `#${id}`,
-        status: int(row[FIELDS.STATUS]),
-        urgency: int(row[FIELDS.URGENCY]) || 3,
-        type: int(row[FIELDS.TYPE]) || 1,
-        category: list(row[FIELDS.CATEGORY]).join(', '),
-        entity: list(row[FIELDS.ENTITY]).join(', '),
-        requesterIds: list(row[FIELDS.REQUESTER])
-          .map(Number)
-          .filter((value) => Number.isInteger(value) && value > 0),
-        opened: text(row[FIELDS.OPENED]),
-        solved: text(row[FIELDS.SOLVED]),
-        dueDate: text(row[FIELDS.TIME_TO_RESOLVE]),
-        late: int(row[FIELDS.LATE]) === 1,
-      };
-    })
-    .sort((a, b) => b.id - a.id);
+  return (
+    (Array.isArray(rows) ? rows : [])
+      .filter((row) => row && typeof row === 'object' && int(row[FIELDS.ID]) > 0)
+      .map((row) => {
+        const id = int(row[FIELDS.ID]);
+        return {
+          id,
+          title: text(row[FIELDS.TITLE]) || `#${id}`,
+          status: int(row[FIELDS.STATUS]),
+          urgency: int(row[FIELDS.URGENCY]) || 3,
+          type: int(row[FIELDS.TYPE]) || 1,
+          category: list(row[FIELDS.CATEGORY]).join(', '),
+          entity: list(row[FIELDS.ENTITY]).join(', '),
+          requesterIds: list(row[FIELDS.REQUESTER])
+            .map(Number)
+            .filter((value) => Number.isInteger(value) && value > 0),
+          opened: text(row[FIELDS.OPENED]),
+          solved: text(row[FIELDS.SOLVED]),
+          dueDate: text(row[FIELDS.TIME_TO_RESOLVE]),
+          late: int(row[FIELDS.LATE]) === 1,
+        };
+      })
+      // Offset pages are not stable: a ticket that moved meanwhile may come twice.
+      .filter((ticket, index, all) => all.findIndex((other) => other.id === ticket.id) === index)
+      .sort((a, b) => b.id - a.id)
+  );
+}
+
+/** A ticket read by GET /Ticket/:id, in the shape of parseTickets (ids only for the dropdowns). */
+export function ticketFromItem(item) {
+  const id = int(item?.id);
+  if (id <= 0) {
+    return null;
+  }
+  return {
+    id,
+    title: text(item.name) || `#${id}`,
+    status: int(item.status),
+    urgency: int(item.urgency) || 3,
+    type: int(item.type) || 1,
+    category: '',
+    entity: '',
+    requesterIds: [],
+    opened: text(item.date),
+    solved: text(item.solvedate),
+    dueDate: text(item.time_to_resolve),
+    late: false,
+  };
 }
 
 /** The counters of the device and the widget. */

@@ -78,8 +78,9 @@ test('nothing fires at the first reading; then new, late and solved tickets, onc
   w.server.ticket(2).solvedate = '2026-10-22 09:00:00';
   await w.hub.poll();
   await w.hub.poll();
-  assert.deepEqual(keys(w), ['ticket_created:9', 'ticket_late:3', 'ticket_solved:2']);
-  assert.deepEqual(w.fake.sceneEvents[0].data, {
+  // Late and solved first: a burst of new tickets never crowds them out.
+  assert.deepEqual(keys(w), ['ticket_late:3', 'ticket_solved:2', 'ticket_created:9']);
+  assert.deepEqual(w.fake.sceneEvents[2].data, {
     ticket_id: 9,
     title: 'Imprimante du 1er en panne',
     urgency: 5,
@@ -94,8 +95,7 @@ test('nothing fires at the first reading; then new, late and solved tickets, onc
     url: `${URL_1}/front/ticket.form.php?id=9`,
   });
   // The filters see the urgency and the type, as strings.
-  assert.equal(w.fake.sceneEvents[0].filters?.urgency ?? '5', '5');
-  assert.equal(w.fake.sceneEvents[2].data.solved_date, '2026-10-22 09:00:00');
+  assert.equal(w.fake.sceneEvents[1].data.solved_date, '2026-10-22 09:00:00');
 });
 
 test('the events survive a restart: neither repeated nor lost', async (t) => {
@@ -268,6 +268,10 @@ test('a GLPI on the Internet is a cloud device', async (t) => {
   assert.equal(isLocalHost('172.20.0.4'), true);
   assert.equal(isLocalHost('helpdesk.example.org'), false);
   assert.equal(isLocalHost('8.8.8.8'), false);
+  assert.equal(isLocalHost('fdsupport.example.com'), false);
+  assert.equal(isLocalHost('[2001:db8::1]'), false);
+  assert.equal(isLocalHost('[fd12:3456::1]'), true);
+  assert.equal(isLocalHost('[::1]'), true);
 });
 
 test('a new configuration reads the new GLPI and closes the old session', async (t) => {
@@ -276,4 +280,64 @@ test('a new configuration reads the new GLPI and closes the old session', async 
   assert.equal(w.fake.discoveredDevices[0].features[0].name, 'Offene Tickets');
   await w.fake.configUpdated({ ...BASE_CONFIG, url: URL_CLOUD });
   assert.ok(w.server.requests.some((request) => request.path.endsWith('/killSession')));
+});
+
+test('an old ticket reopened is not a new ticket', async (t) => {
+  const server = new FakeGlpi();
+  // Solved yesterday: not in the list of the first reading.
+  server.addTicket({ name: 'Vieux ticket', status: 5, solvedToday: false });
+  const w = await world(t, { server });
+  server.ticket(9).status = 2;
+  await w.hub.poll();
+  assert.deepEqual(keys(w), []);
+});
+
+test('a ticket solved before midnight and read after it still fires "solved"', async (t) => {
+  const w = await world(t);
+  Object.assign(w.server.ticket(3), {
+    status: 5,
+    solvedToday: false,
+    solvedate: '2026-10-21 23:59:00',
+  });
+  await w.hub.poll();
+  assert.deepEqual(keys(w), ['ticket_solved:3']);
+  assert.equal(w.fake.sceneEvents[0].data.title, 'Mot de passe oublié');
+  await w.hub.poll();
+  assert.equal(w.fake.sceneEvents.length, 1);
+});
+
+test('a ticket created by Gladys is not announced after a restart either', async (t) => {
+  const dataDir = mkdtempSync(join(tmpdir(), 'gladys-glpi-'));
+  const server = new FakeGlpi();
+  const first = await world(t, { server, dataDir });
+  // Stopped before any reading saw the new ticket.
+  first.hub.refreshSoon = async () => {};
+  const created = await first.fake.sceneAction('create_ticket', { title: 'Fuite' });
+  assert.equal(created.success, true, created.error);
+  await first.app.stop();
+  const second = await world(t, { server, dataDir });
+  assert.deepEqual(keys(second), []);
+});
+
+test('an event Gladys refuses for good does not block the next ones', async (t) => {
+  const w = await world(t);
+  w.server.addTicket({ name: 'A' });
+  w.server.addTicket({ name: 'B' });
+  const publish = w.gladys.publishSceneEvent.bind(w.gladys);
+  w.gladys.publishSceneEvent = async (key, data) => {
+    if (data.ticket_id === 9) {
+      throw Object.assign(new Error('Bad request'), { status: 400 });
+    }
+    return publish(key, data);
+  };
+  await w.hub.poll();
+  await w.hub.poll();
+  assert.deepEqual(keys(w), ['ticket_created:10']);
+});
+
+test('a follow-up on a closed ticket GLPI refuses says so', async (t) => {
+  const w = await world(t);
+  w.server.refuseOnClosed = true;
+  const ack = await w.fake.sceneAction('add_followup', { ticket: '5', text: 'x' });
+  assert.match(ack.error, /This ticket is closed/);
 });

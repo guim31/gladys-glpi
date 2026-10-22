@@ -118,15 +118,16 @@ export class FakeGlpi {
     this.sessions.clear();
   }
 
-  visible() {
+  /** Open tickets and those solved today; every ticket when the search has no criteria. */
+  visible(all = false) {
     return this.tickets
-      .filter((ticket) => [1, 2, 3, 4].includes(ticket.status) || ticket.solvedToday)
+      .filter((ticket) => all || [1, 2, 3, 4].includes(ticket.status) || ticket.solvedToday)
       .sort((a, b) => b.id - a.id);
   }
 
   search(params) {
     const [start, end] = (params.get('range') ?? '0-49').split('-').map(Number);
-    const all = this.visible();
+    const all = this.visible(!params.has('criteria[0][field]'));
     if (all.length > 0 && start >= all.length) {
       return error('range_exceeded');
     }
@@ -227,7 +228,14 @@ export class FakeGlpi {
       if (!ticket) {
         return error('item_not_found');
       }
-      return json(200, { ...fixture('real-ticket'), id: ticket.id, name: ticket.name });
+      return json(200, {
+        ...fixture('real-ticket'),
+        id: ticket.id,
+        name: ticket.name,
+        status: ticket.status,
+        urgency: ticket.urgency,
+        solvedate: ticket.solvedate,
+      });
     }
     if (method === 'POST' && route === '/Ticket') {
       if (!this.canCreate) {
@@ -246,8 +254,10 @@ export class FakeGlpi {
     }
     const followup = route.match(/^\/Ticket\/(\d+)\/ITILFollowup$/);
     if (method === 'POST' && followup) {
-      if (!this.ticket(Number(followup[1]))) {
-        // The real server says "no permission" for a missing ticket.
+      const target = this.ticket(Number(followup[1]));
+      // The real server says "no permission" for a missing ticket, and GLPI 10
+      // and 11 may for a closed one.
+      if (!target || (target.status === 6 && this.refuseOnClosed)) {
         return error('add_refused');
       }
       this.followups.push({ ticket: Number(followup[1]), ...(body?.input ?? {}) });

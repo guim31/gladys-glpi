@@ -235,7 +235,11 @@ installées en ligne de commande (`php bin/console db:install … -n --no-teleme
   ticket est lu avant.
 - **Pas de boucle** : un ticket créé par l'action de scène n'est jamais annoncé par « Nouveau ticket GLPI ».
 - Événements : par différence avec la lecture précédente (`/data/glpi-state.json`, portée = adresse + id de
-  l'utilisateur GLPI), 30 au plus par lecture ; la première lecture ne déclenche rien.
+  l'utilisateur GLPI), 30 au plus par lecture, retards et résolutions d'abord ; la première lecture ne
+  déclenche rien et prend le plus grand numéro de **tous** les tickets (`lastTicketId`), sinon un vieux ticket
+  rouvert passerait pour nouveau. Un ticket ouvert qui sort de la liste (résolu avant minuit, lu après) est relu
+  par `GET /Ticket/:id`. Les tickets créés par l'action sont gardés dans l'état (`own`), redémarrage compris.
+  Un refus définitif de Gladys (400, 404, 422) saute l'événement au lieu de bloquer les suivants.
 
 ## Store
 

@@ -156,6 +156,12 @@ export const ACTION_TEXT = {
     de: 'GLPI hat kein Ticket mit dieser Nummer, oder der Benutzer des Tokens sieht es nicht.',
     es: 'GLPI no tiene ningún ticket con este número, o el usuario del token no puede verlo.',
   },
+  ticketClosed: {
+    en: 'This ticket is closed: GLPI refuses a follow-up on it.',
+    fr: 'Ce ticket est clos : GLPI y refuse un suivi.',
+    de: 'Dieses Ticket ist geschlossen: GLPI lehnt eine Antwort darauf ab.',
+    es: 'Este ticket está cerrado: GLPI rechaza un seguimiento en él.',
+  },
   categoryNotFound: {
     en: 'No ticket category has this name or number in GLPI.',
     fr: 'Aucune catégorie de ticket ne porte ce nom ou ce numéro dans GLPI.',

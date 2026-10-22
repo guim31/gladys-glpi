@@ -26,6 +26,7 @@ import {
   parseTickets,
   summarize,
   text,
+  ticketFromItem,
   ticketUrl,
   toHtml,
   userName,
@@ -70,6 +71,10 @@ const REFRESH_WAIT_MS = 3_000;
 // Tickets created by the scene action that the next readings must not
 // announce as new (no loop between a trigger and the action).
 const OWN_TICKETS_KEPT = 100;
+// Tickets gone from the list read one by one at most, per reading.
+const MAX_LOOKUPS = 20;
+// Answers of Gladys to a scene event that a retry would not change.
+const PERMANENT_REFUSALS = [400, 404, 413, 422];
 // GLPI caps a title at 255 characters.
 const TITLE_MAX = 250;
 const CONTENT_MAX = 20_000;
@@ -77,6 +82,10 @@ const CONTENT_MAX = 20_000;
 /** An address of the home network (local transport), else the Internet (cloud). */
 export function isLocalHost(hostname) {
   const host = hostname.replace(/^\[|\]$/g, '').toLowerCase();
+  if (host.includes(':')) {
+    // IPv6: loopback, unique local (fc00::/7) and link-local addresses.
+    return host === '::1' || /^f[cd][0-9a-f]{0,2}:/.test(host) || host.startsWith('fe80:');
+  }
   if (!host.includes('.') || /\.(local|lan|home|internal|localdomain|home\.arpa)$/.test(host)) {
     return true;
   }
@@ -92,7 +101,7 @@ export function isLocalHost(hostname) {
       (a === 100 && b >= 64 && b <= 127)
     );
   }
-  return host === '::1' || /^f[cd]/.test(host) || host.startsWith('fe80:');
+  return false;
 }
 
 export class GlpiHub {
@@ -177,8 +186,10 @@ export class GlpiHub {
             maxId: Number.isInteger(saved.maxId) ? saved.maxId : 0,
             open: Array.isArray(saved.open) ? saved.open.filter(Number.isInteger) : [],
             late: Array.isArray(saved.late) ? saved.late.filter(Number.isInteger) : [],
+            own: Array.isArray(saved.own) ? saved.own.filter(Number.isInteger) : [],
           }
         : null;
+    this.ownTickets = this.saved?.own ?? [];
     await this.reconfigure(config);
   }
 
@@ -264,7 +275,7 @@ export class GlpiHub {
       return;
     }
     const { client } = this;
-    let fresh = false;
+    let fresh = null;
     try {
       const account = this.account ?? (await client.session());
       const version = this.version ?? (await client.version()) ?? '?';
@@ -277,10 +288,10 @@ export class GlpiHub {
       this.account = account;
       this.version = version;
       this.tickets = parseTickets(rows);
+      fresh = { client, account, tickets: this.tickets };
       this.total = total;
       this.readAt = Date.now();
       this.recovered();
-      fresh = true;
     } catch (err) {
       if (client !== this.client) {
         return;
@@ -291,7 +302,11 @@ export class GlpiHub {
       await this.publishDevice();
       if (fresh) {
         await this.publishStates();
-        await this.fireEvents();
+        // The configuration may have changed meanwhile: these events belong
+        // to the previous GLPI.
+        if (fresh.client === this.client) {
+          await this.fireEvents(fresh);
+        }
       }
     }
     await this.publishTransport();
@@ -444,45 +459,84 @@ export class GlpiHub {
 
   // --- Scene events ----------------------------------------------------------
 
-  /** What the next reading compares with: the highest number, the open and late tickets. */
-  snapshot(scope) {
-    const open = this.tickets.filter(isOpen);
+  /**
+   * What the next reading compares with: the highest ticket number, the open
+   * and late tickets, and the tickets created by the scene action (saved, so
+   * a restart never announces them as new).
+   */
+  snapshot(scope, tickets, maxId = 0) {
+    const open = tickets.filter(isOpen);
     return {
       scope,
       maxId: Math.max(
+        maxId,
         this.saved?.scope === scope ? this.saved.maxId : 0,
-        ...this.tickets.map((t) => t.id),
+        ...tickets.map((t) => t.id),
       ),
       open: open.map((ticket) => ticket.id),
       late: open.filter((ticket) => ticket.late).map((ticket) => ticket.id),
+      own: this.ownTickets,
     };
   }
 
-  async fireEvents() {
+  /**
+   * The tickets open at the previous reading and absent now: solved before
+   * midnight and read after it, deleted, moved out of sight. Read one by one
+   * (a few at most), the solved ones are returned.
+   */
+  async solvedOutOfSight(client, before, tickets) {
+    const listed = new Set(tickets.map((ticket) => ticket.id));
+    const gone = before.open.filter((id) => !listed.has(id)).slice(0, MAX_LOOKUPS);
+    const solved = [];
+    for (const id of gone) {
+      try {
+        const ticket = ticketFromItem(await client.ticket(id));
+        if (ticket && !isOpen(ticket)) {
+          solved.push(ticket);
+        }
+      } catch (err) {
+        logger.debug(`Ticket #${id} not readable: ${err.message}`);
+      }
+    }
+    return solved;
+  }
+
+  async fireEvents({ client, account, tickets }) {
     // Per GLPI and per user: another user sees other tickets.
-    const scope = `${this.config.url}#${this.account.userId}`;
+    const scope = `${this.config.url}#${account.userId}`;
     if (this.saved?.scope !== scope) {
-      this.saved = this.snapshot(scope);
+      // First reading: the highest number of every ticket, open or not, so
+      // that an old ticket reopened later is not taken for a new one.
+      let lastId = 0;
+      try {
+        lastId = await client.lastTicketId();
+      } catch (err) {
+        logger.debug(`Last ticket number not readable: ${err.message}`);
+      }
+      this.saved = this.snapshot(scope, tickets, lastId);
       this.store.save(this.saved);
       return;
     }
     const before = this.saved;
     const wasOpen = new Set(before.open);
     const wasLate = new Set(before.late);
+    // Late and solved first: a mass import of new tickets must not crowd them out.
     const events = [
-      ...this.tickets
-        .filter((ticket) => ticket.id > before.maxId)
-        .sort((a, b) => a.id - b.id)
-        .map((ticket) => ({ key: TRIGGERS.CREATED, ticket })),
-      ...this.tickets
+      ...tickets
         .filter((ticket) => isOpen(ticket) && ticket.late && !wasLate.has(ticket.id))
         .map((ticket) => ({ key: TRIGGERS.LATE, ticket })),
-      ...this.tickets
+      ...tickets
         .filter((ticket) => !isOpen(ticket) && wasOpen.has(ticket.id))
         .map((ticket) => ({ key: TRIGGERS.SOLVED, ticket })),
-    ].filter(
-      ({ key, ticket }) => !(key === TRIGGERS.CREATED && this.ownTickets.includes(ticket.id)),
-    );
+      ...(await this.solvedOutOfSight(client, before, tickets)).map((ticket) => ({
+        key: TRIGGERS.SOLVED,
+        ticket,
+      })),
+      ...tickets
+        .filter((ticket) => ticket.id > before.maxId && !this.ownTickets.includes(ticket.id))
+        .sort((a, b) => a.id - b.id)
+        .map((ticket) => ({ key: TRIGGERS.CREATED, ticket })),
+    ];
 
     if (events.length > MAX_EVENTS_PER_READING) {
       this.problem(
@@ -490,25 +544,29 @@ export class GlpiHub {
         `${events.length} scene events at once: only the first ${MAX_EVENTS_PER_READING} are sent`,
       );
     }
-    // What fired is applied to the saved state one by one: when Gladys
-    // refuses one (restarting?), it and the next ones are tried again at the
-    // next reading.
-    const applied = { ...before, open: [...before.open], late: [...before.late] };
-    let complete = true;
-    for (const { key, ticket } of events.slice(0, MAX_EVENTS_PER_READING)) {
-      if (!(await this.fire(key, await this.eventData(key, ticket)))) {
-        complete = false;
+    // When Gladys cannot take an event now (restarting?), it and the next
+    // ones are tried again at the next reading; one it refuses for good is
+    // skipped, or it would block every later event.
+    const batch = events.slice(0, MAX_EVENTS_PER_READING);
+    let unsent = [];
+    for (const [index, { key, ticket }] of batch.entries()) {
+      if ((await this.fire(key, await this.eventData(key, ticket))) === 'retry') {
+        unsent = batch.slice(index);
         break;
       }
+    }
+    const next = this.snapshot(scope, tickets);
+    for (const { key, ticket } of unsent) {
       if (key === TRIGGERS.CREATED) {
-        applied.maxId = Math.max(applied.maxId, ticket.id);
+        // Sent in increasing order: the first one unsent bounds the others.
+        next.maxId = Math.min(next.maxId, ticket.id - 1);
       } else if (key === TRIGGERS.LATE) {
-        applied.late.push(ticket.id);
-      } else {
-        applied.open = applied.open.filter((id) => id !== ticket.id);
+        next.late = next.late.filter((id) => id !== ticket.id);
+      } else if (!next.open.includes(ticket.id)) {
+        next.open.push(ticket.id);
       }
     }
-    this.saved = complete ? this.snapshot(scope) : applied;
+    this.saved = next;
     if (JSON.stringify(this.saved) !== JSON.stringify(before)) {
       this.store.save(this.saved);
     }
@@ -523,7 +581,14 @@ export class GlpiHub {
           this.users.set(id, userName(await this.client.user(id)));
         } catch (err) {
           logger.debug(`User #${id} not readable: ${err.message}`);
-          this.users.set(id, '');
+          // Kept empty for good only when GLPI says no; a timeout is retried.
+          const refused =
+            err instanceof GlpiError &&
+            ([ERROR_KINDS.RIGHTS, ERROR_KINDS.AUTH].includes(err.kind) ||
+              err.code === 'ERROR_ITEM_NOT_FOUND');
+          if (refused) {
+            this.users.set(id, '');
+          }
         }
       }
       if (this.users.get(id)) {
@@ -556,10 +621,11 @@ export class GlpiHub {
     try {
       await this.gladys.publishSceneEvent(key, data);
       this.resolved('scene-event');
-      return true;
+      return 'sent';
     } catch (err) {
       this.problem('scene-event', `Scene event ${key} refused: ${err.message}`);
-      return false;
+      // A refusal a retry would not change is skipped, the rest tried again.
+      return PERMANENT_REFUSALS.includes(err?.status) ? 'skip' : 'retry';
     }
   }
 
@@ -665,6 +731,10 @@ export class GlpiHub {
     // Never announced as new by the next reading: a scene "new ticket →
     // create a ticket" would loop.
     this.ownTickets = [...this.ownTickets, id].slice(-OWN_TICKETS_KEPT);
+    if (this.saved) {
+      this.saved = { ...this.saved, own: this.ownTickets };
+      this.store.save(this.saved);
+    }
     logger.info(`Ticket #${id} created from Gladys`);
     await this.refreshSoon();
     return { id, title, url: ticketUrl(this.config.url, id) };
@@ -690,6 +760,14 @@ export class GlpiHub {
     } catch (err) {
       if (err instanceof GlpiError && err.code === 'ERROR_ITEM_NOT_FOUND') {
         throw this.fail('ticketNotFound');
+      }
+      // GLPI 10 and 11 may refuse a follow-up on a closed ticket ("no permission").
+      if (
+        err instanceof GlpiError &&
+        err.kind === ERROR_KINDS.RIGHTS &&
+        Number(ticket?.status) === 6
+      ) {
+        throw this.fail('ticketClosed');
       }
       throw this.explain(err);
     }
