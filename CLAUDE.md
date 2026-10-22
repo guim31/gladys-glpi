@@ -32,15 +32,20 @@ pushing.
 
 ```
 index.js                          SDK wiring only: handlers registered before connect()
-src/devices/index.js              registry of the device blueprints + dispatch helpers
-src/devices/<type>.js             one device type per file (buildDevice, onPoll, onSetValue...)
+src/app.js                        registers every SDK handler on the hub (shared with the tests)
+src/hub.js                        reading timer, counters, scene events, scene action commands
+src/glpi/client.js                GLPI legacy REST API client (session, search, tickets, follow-ups)
+src/glpi/http.js                  the one function that talks to the network (node:http/https)
+src/glpi/model.js                 search rows -> tickets, counters, name lookup, text -> HTML
+src/devices.js                    the "GLPI" device and its six counters
 src/scenes.js                     scene action handlers (manifest `scene_actions`)
-src/widgets.js                    dashboard widget handlers (manifest `widgets`)
+src/widgets.js                    dashboard widget handler (manifest `widgets`)
+src/texts.js                      every message sent to Gladys, in four languages
+src/store.js                      /data/glpi-state.json: what the previous reading saw
 src/config.js                     DEFAULT_CONFIG (mirrors the manifest defaults) + normalization
-src/weather.js                    example driver (Open-Meteo)
-gladys-assistant-integration.json manifest: name, config_schema, actions, image...
-docs/en.md, docs/fr.md            user documentation, re-hosted by Gladys (mandatory)
-test/                             node --test, against the SDK's fake Gladys (integration-sdk/testing)
+gladys-assistant-integration.json manifest: name, config_schema, actions, triggers, widget...
+docs/{en,fr,de,es}.md             user documentation, re-hosted by Gladys (mandatory)
+test/                             node --test, against the SDK's fake Gladys and test/helpers/fakeGlpi.js
 .github/scripts/release.mjs       release helpers (manifest bump, changelog), tested in test/
 ```
 
@@ -70,8 +75,9 @@ test/                             node --test, against the SDK's fake Gladys (in
   `type: "provider"`: 5.1.0). `test/manifest.test.js` ties the manifest to the
   code (defaults, action, scene and widget handlers): change both sides
   together.
-- **User-facing text** is bilingual (English and French): action messages,
-  manifest texts, and `docs/en.md` / `docs/fr.md`, kept in sync.
+- **User-facing text** exists in English, French, German and Spanish: action
+  messages, manifest texts, widget texts, feature names, and `docs/en.md`,
+  `docs/fr.md`, `docs/de.md`, `docs/es.md`, kept in sync (`test/i18n.test.js`).
 - **Style.** Prettier formats, ESLint catches mistakes. Comments explain why,
   in English. Tests never touch the network.
 
@@ -197,6 +203,36 @@ code de ce dépôt. Compléter ce fichier quand un nouveau piège est découvert
 - Les filtres de scène ne font qu'égalité et appartenance : un seuil reste le travail d'un capteur.
 - **Les clés de widgets, de déclencheurs et d'actions sont figées une fois publiées.**
 - `gladys_version` `>=5.1.0` dès qu'il y a widgets, déclencheurs ou actions de scène.
+
+## GLPI (propre à ce dépôt)
+
+Vérifié le 22/10/2026 sur les images officielles `glpi/glpi` **10.0.28, 11.0.11 et 12.0.0** (MariaDB 11),
+installées en ligne de commande (`php bin/console db:install … -n --no-telemetry`). Réponses réelles dans
+`test/fixtures/glpi/` (adresses remplacées par 192.0.2.30).
+
+- **API historique `apirest.php`** dans les trois versions (l'API v2 OAuth2 de GLPI 11 n'est pas utilisée).
+  `initSession` avec `Authorization: user_token …` (+ `App-Token` si le client d'API en a un), puis
+  `Session-Token` sur chaque appel. Une session expirée répond `ERROR_SESSION_TOKEN_MISSING` (400, pas 401) :
+  le client en rouvre une, une seule fois.
+- **Erreurs** : un tableau `["CODE", "message"]`, presque toujours en **400** (mauvais jeton d'application,
+  adresse refusée par le client d'API, API désactivée `["ERROR","API disabled"]`) ; seul un mauvais jeton
+  utilisateur est un 401. Le message porte l'adresse de la doc (`…; view documentation…`), retirée des logs.
+- **Jetons chiffrés en base** depuis GLPI 10 (`GLPIKey`) : pour un test Docker, les poser via
+  `(new GLPIKey())->encrypt()` (bootstrap différent en 10 : `inc/based_config.php` avant l'autoload). Le client
+  d'API par défaut n'accepte que `127.0.0.1`.
+- **Recherche** `GET /search/Ticket` : critères `12 equals notold` OU `17 morethan TODAY` (GLPI calcule
+  « aujourd'hui » à l'heure du serveur), lignes indexées par numéro de champ (`FIELDS` dans le client),
+  **206** pour une page partielle, **400 `ERROR_RANGE_EXCEED_TOTAL`** pour une plage au-delà du total (ne
+  jamais la demander), réponse sans `data` quand il n'y a rien. Le champ 82 (« Temps de résolution dépassé »)
+  est calculé par GLPI : aucune comparaison de dates naïves (heure du serveur GLPI) dans le conteneur. Le
+  demandeur (champ 4) est un id, ou un **tableau** d'ids s'il y en a plusieurs : nom lu par `GET /User/:id`.
+- **Création** : sans `_users_id_requester`, un ticket créé par l'API n'a **aucun demandeur** ; une catégorie
+  inexistante est acceptée en silence (d'où la résolution par nom ou numéro avant) ; un titre vide aussi.
+- **Suivi sur un ticket inexistant** : 400 `ERROR_GLPI_ADD` « You don't have permission », pas 404 : le
+  ticket est lu avant.
+- **Pas de boucle** : un ticket créé par l'action de scène n'est jamais annoncé par « Nouveau ticket GLPI ».
+- Événements : par différence avec la lecture précédente (`/data/glpi-state.json`, portée = adresse + id de
+  l'utilisateur GLPI), 30 au plus par lecture ; la première lecture ne déclenche rien.
 
 ## Store
 

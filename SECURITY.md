@@ -30,6 +30,18 @@ Gladys before reporting a problem.
 
 In scope: the code of this repository and the Docker image it publishes.
 
+What the integration keeps and sends:
+
+- the GLPI address, the user token and the optional application token live in
+  the configuration of the integration, stored by Gladys; they are never
+  written to the logs;
+- `/data/glpi-state.json` holds the address of GLPI, the id of the GLPI user,
+  the highest ticket number seen and the numbers of the open and late tickets
+  (to fire each scene event once): no title, no content, no token;
+- the integration only talks to the GLPI address of the configuration (HTTP or
+  HTTPS), with the session token GLPI gives it; it acts with the rights of that
+  GLPI user, so give it a dedicated user with the smallest profile that fits.
+
 Out of scope: Gladys Assistant itself (see its
 [security policy](https://github.com/GladysAssistant/Gladys/security/policy)),
-and the third-party services and devices the integration talks to.
+GLPI, and the other third-party services and devices.

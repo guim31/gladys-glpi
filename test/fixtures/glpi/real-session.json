@@ -1,0 +1,24 @@
+{
+  "session": {
+    "glpi_currenttime": "2026-10-22 05:59:12",
+    "glpiID": 2,
+    "glpiname": "glpi",
+    "glpifriendlyname": "glpi",
+    "glpirealname": null,
+    "glpifirstname": null,
+    "glpidefault_entity": 0,
+    "glpilanguage": "en_GB",
+    "glpiactive_entity": 0,
+    "glpiactive_entity_name": "Root entity (tree structure)",
+    "glpiactive_entity_shortname": "Root entity (tree structure)",
+    "glpiactive_entity_recursive": 1,
+    "glpiactiveentities": [0, 1],
+    "glpiactiveprofile": {
+      "id": 4,
+      "name": "Super-Admin",
+      "interface": "central",
+      "ticket": 523295,
+      "followup": 64535
+    }
+  }
+}

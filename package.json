@@ -1,8 +1,8 @@
 {
-  "name": "gladys-integration-template-js",
+  "name": "gladys-glpi",
   "version": "1.0.0",
   "private": true,
-  "description": "Official starter template to build an external integration for Gladys Assistant with the JavaScript SDK.",
+  "description": "GLPI helpdesk in Gladys Assistant: ticket counters, scene triggers, ticket creation from a scene.",
   "type": "module",
   "main": "index.js",
   "scripts": {

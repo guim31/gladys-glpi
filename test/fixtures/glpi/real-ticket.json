@@ -1,0 +1,108 @@
+{
+  "id": 3,
+  "entities_id": 0,
+  "name": "Mot de passe oublié",
+  "date": "2026-10-22 05:57:27",
+  "closedate": null,
+  "solvedate": null,
+  "takeintoaccountdate": null,
+  "date_mod": "2026-10-22 05:57:27",
+  "users_id_lastupdater": 2,
+  "status": 1,
+  "users_id_recipient": 2,
+  "requesttypes_id": 1,
+  "content": "test",
+  "urgency": 5,
+  "impact": 3,
+  "priority": 4,
+  "itilcategories_id": 0,
+  "type": 2,
+  "global_validation": 1,
+  "slas_id_ttr": 0,
+  "slas_id_tto": 0,
+  "slalevels_id_ttr": 0,
+  "time_to_resolve": null,
+  "time_to_own": null,
+  "begin_waiting_date": null,
+  "sla_waiting_duration": 0,
+  "waiting_duration": 0,
+  "close_delay_stat": 0,
+  "solve_delay_stat": 0,
+  "takeintoaccount_delay_stat": 0,
+  "actiontime": 0,
+  "is_deleted": 0,
+  "locations_id": 0,
+  "date_creation": "2026-10-22 05:57:27",
+  "tickettemplates_id": 0,
+  "externalid": null,
+  "links": [
+    {
+      "rel": "Entity",
+      "href": "http://192.0.2.30/api.php/v1/Entity/0"
+    },
+    {
+      "rel": "User",
+      "href": "http://192.0.2.30/api.php/v1/User/2"
+    },
+    {
+      "rel": "User",
+      "href": "http://192.0.2.30/api.php/v1/User/2"
+    },
+    {
+      "rel": "RequestType",
+      "href": "http://192.0.2.30/api.php/v1/RequestType/1"
+    },
+    {
+      "rel": "Document_Item",
+      "href": "http://192.0.2.30/api.php/v1/Ticket/3/Document_Item/"
+    },
+    {
+      "rel": "TicketTask",
+      "href": "http://192.0.2.30/api.php/v1/Ticket/3/TicketTask/"
+    },
+    {
+      "rel": "TicketValidation",
+      "href": "http://192.0.2.30/api.php/v1/Ticket/3/TicketValidation/"
+    },
+    {
+      "rel": "TicketCost",
+      "href": "http://192.0.2.30/api.php/v1/Ticket/3/TicketCost/"
+    },
+    {
+      "rel": "Problem_Ticket",
+      "href": "http://192.0.2.30/api.php/v1/Ticket/3/Problem_Ticket/"
+    },
+    {
+      "rel": "Change_Ticket",
+      "href": "http://192.0.2.30/api.php/v1/Ticket/3/Change_Ticket/"
+    },
+    {
+      "rel": "Ticket_Ticket",
+      "href": "http://192.0.2.30/api.php/v1/Ticket/3/Ticket_Ticket/"
+    },
+    {
+      "rel": "Item_Ticket",
+      "href": "http://192.0.2.30/api.php/v1/Ticket/3/Item_Ticket/"
+    },
+    {
+      "rel": "ITILSolution",
+      "href": "http://192.0.2.30/api.php/v1/Ticket/3/ITILSolution/"
+    },
+    {
+      "rel": "ITILFollowup",
+      "href": "http://192.0.2.30/api.php/v1/Ticket/3/ITILFollowup/"
+    },
+    {
+      "rel": "Ticket_User",
+      "href": "http://192.0.2.30/api.php/v1/Ticket/3/Ticket_User/"
+    },
+    {
+      "rel": "Group_Ticket",
+      "href": "http://192.0.2.30/api.php/v1/Ticket/3/Group_Ticket/"
+    },
+    {
+      "rel": "Supplier_Ticket",
+      "href": "http://192.0.2.30/api.php/v1/Ticket/3/Supplier_Ticket/"
+    }
+  ]
+}

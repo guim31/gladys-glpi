@@ -1,177 +1,1184 @@
 {
   "manifest_version": 1,
   "type": "device",
-  "name": "Demo Devices Template",
+  "name": "GLPI",
   "description": {
-    "en": "Starter template showing sensors, a switch, a dimmable light and a smart plug.",
-    "fr": "Template de démarrage : capteurs, interrupteur, lampe variable et prise connectée."
+    "en": "GLPI tickets: open, late, solved today; new ticket trigger; tickets created from a scene.",
+    "fr": "Tickets GLPI : ouverts, en retard, résolus du jour ; déclencheurs, et tickets créés par une scène.",
+    "de": "GLPI-Tickets: offen, überfällig, heute gelöst; Auslöser und Tickets aus einer Szene erstellt.",
+    "es": "Tickets de GLPI: abiertos, atrasados, resueltos hoy; disparadores y tickets creados por una escena."
   },
   "version": "1.0.0",
-  "docker_image": "ghcr.io/gladysassistant/integration-template-js:1.0.0",
+  "docker_image": "ghcr.io/guim31/gladys-glpi:1.0.0",
   "gladys_version": ">=5.1.0",
-  "cover_image": "https://raw.githubusercontent.com/GladysAssistant/integration-template-js/master/cover.png",
-  "categories": ["lighting", "security", "environment"],
+  "cover_image": "https://raw.githubusercontent.com/guim31/gladys-glpi/main/cover.png",
+  "categories": ["services"],
   "transports": ["local", "cloud"],
   "config_schema": [
     {
       "key": "intro",
       "type": "section",
-      "label": { "en": "Getting started", "fr": "Pour commencer" },
+      "label": {
+        "en": "Your GLPI",
+        "fr": "Votre GLPI",
+        "de": "Dein GLPI",
+        "es": "Su GLPI"
+      },
       "description": {
-        "en": "The demo weather station reads real data from the free Open-Meteo API: pick the coordinates to observe. No account, no API key.",
-        "fr": "La station météo de démonstration lit de vraies données via l'API gratuite Open-Meteo : choisissez les coordonnées à observer. Pas de compte, pas de clé d'API."
+        "en": "GLPI 10 or later, self-hosted or GLPI Network Cloud. In GLPI: turn on the REST API (Setup, General, API), then copy the API token of a user (its preferences). See the documentation.",
+        "fr": "GLPI 10 ou plus récent, auto-hébergé ou GLPI Network Cloud. Dans GLPI : activez l'API REST (Configuration, Générale, API), puis copiez le jeton d'API d'un utilisateur (ses préférences). Voir la documentation.",
+        "de": "GLPI 10 oder neuer, selbst gehostet oder GLPI Network Cloud. In GLPI: Schalte die REST-API ein (Konfiguration, Allgemein, API) und kopiere das API-Token eines Benutzers (seine Einstellungen). Siehe Dokumentation.",
+        "es": "GLPI 10 o posterior, autoalojado o GLPI Network Cloud. En GLPI: active la API REST (Configuración, General, API) y copie el token de API de un usuario (sus preferencias). Consulte la documentación."
       },
       "links": [
         {
-          "url": "https://open-meteo.com/en/docs",
-          "label": { "en": "Open-Meteo documentation", "fr": "Documentation Open-Meteo" }
+          "url": "https://glpi-user-documentation.readthedocs.io/",
+          "label": {
+            "en": "GLPI documentation",
+            "fr": "Documentation de GLPI",
+            "de": "GLPI-Dokumentation",
+            "es": "Documentación de GLPI"
+          }
         }
       ]
     },
     {
-      "key": "latitude",
-      "type": "number",
-      "label": { "en": "Latitude", "fr": "Latitude" },
-      "description": {
-        "en": "Latitude used for the demo weather sensor.",
-        "fr": "Latitude utilisée par le capteur météo de démonstration."
+      "key": "url",
+      "type": "string",
+      "label": {
+        "en": "Address",
+        "fr": "Adresse",
+        "de": "Adresse",
+        "es": "Dirección"
       },
-      "placeholder": { "en": "e.g. 48.8566", "fr": "ex. 48.8566" },
+      "description": {
+        "en": "Address of GLPI as in the browser, with https:// for HTTPS and the /glpi folder if any.",
+        "fr": "Adresse de GLPI comme dans le navigateur, avec https:// pour le HTTPS et le dossier /glpi s'il y en a un.",
+        "de": "Adresse von GLPI wie im Browser, mit https:// für HTTPS und dem Ordner /glpi, falls vorhanden.",
+        "es": "Dirección de GLPI como en el navegador, con https:// para HTTPS y la carpeta /glpi si la hay."
+      },
+      "placeholder": {
+        "en": "e.g. https://helpdesk.example.org",
+        "fr": "ex. https://helpdesk.example.org",
+        "de": "z. B. https://helpdesk.example.org",
+        "es": "p. ej. https://helpdesk.example.org"
+      },
       "required": true,
-      "default": 48.8566,
-      "min": -90,
-      "max": 90
+      "default": ""
     },
     {
-      "key": "longitude",
-      "type": "number",
-      "label": { "en": "Longitude", "fr": "Longitude" },
-      "description": {
-        "en": "Longitude used for the demo weather sensor.",
-        "fr": "Longitude utilisée par le capteur météo de démonstration."
+      "key": "user_token",
+      "type": "secret",
+      "label": {
+        "en": "User token",
+        "fr": "Jeton utilisateur",
+        "de": "Benutzer-Token",
+        "es": "Token de usuario"
       },
-      "placeholder": { "en": "e.g. 2.3522", "fr": "ex. 2.3522" },
-      "required": true,
-      "default": 2.3522,
-      "min": -180,
-      "max": 180
+      "description": {
+        "en": "The API token of the GLPI user Gladys acts as: in its preferences, API token, Regenerate, then copy.",
+        "fr": "Le jeton d'API de l'utilisateur GLPI au nom duquel Gladys agit : dans ses préférences, Jeton d'API, Regénérer, puis copiez-le.",
+        "de": "Das API-Token des GLPI-Benutzers, in dessen Namen Gladys handelt: in seinen Einstellungen, API-Token, Neu erzeugen, dann kopieren.",
+        "es": "El token de API del usuario de GLPI en cuyo nombre actúa Gladys: en sus preferencias, API token, Regenerar, y cópielo."
+      },
+      "required": true
     },
     {
-      "key": "unit",
-      "type": "select",
-      "label": { "en": "Temperature unit", "fr": "Unité de température" },
+      "key": "app_token",
+      "type": "secret",
+      "label": {
+        "en": "Application token",
+        "fr": "Jeton d'application",
+        "de": "Anwendungs-Token",
+        "es": "Token de aplicación"
+      },
+      "description": {
+        "en": "Only if the API client of GLPI has one (Setup, General, API, API clients).",
+        "fr": "Seulement si le client d'API de GLPI en a un (Configuration, Générale, API, Clients de l'API).",
+        "de": "Nur, wenn der API-Client von GLPI eines hat (Konfiguration, Allgemein, API, API-Clients).",
+        "es": "Solo si el cliente de la API de GLPI tiene uno (Configuración, General, API, Clientes de la API)."
+      },
+      "required": false
+    },
+    {
+      "key": "options",
+      "type": "section",
+      "label": {
+        "en": "Options",
+        "fr": "Options",
+        "de": "Optionen",
+        "es": "Opciones"
+      }
+    },
+    {
+      "key": "allow_self_signed",
+      "type": "boolean",
+      "label": {
+        "en": "Accept self-signed certificates",
+        "fr": "Accepter les certificats auto-signés",
+        "de": "Selbstsignierte Zertifikate akzeptieren",
+        "es": "Aceptar certificados autofirmados"
+      },
+      "description": {
+        "en": "For an https:// address whose certificate is self-signed. Tick only for your own server.",
+        "fr": "Pour une adresse en https:// dont le certificat est auto-signé. À cocher pour votre propre serveur seulement.",
+        "de": "Für eine https://-Adresse mit selbstsigniertem Zertifikat. Nur für deinen eigenen Server aktivieren.",
+        "es": "Para una dirección https:// con certificado autofirmado. Márquelo solo para su propio servidor."
+      },
       "required": false,
-      "default": "celsius",
+      "default": false
+    },
+    {
+      "key": "poll_interval",
+      "type": "select",
+      "label": {
+        "en": "Refresh interval",
+        "fr": "Intervalle de rafraîchissement",
+        "de": "Aktualisierungsintervall",
+        "es": "Intervalo de actualización"
+      },
+      "description": {
+        "en": "How often GLPI is read: the counters and the scene triggers follow it.",
+        "fr": "Fréquence de lecture de GLPI : les compteurs et les déclencheurs de scène la suivent.",
+        "de": "Wie oft GLPI gelesen wird: Zähler und Szenenauslöser folgen ihr.",
+        "es": "Con qué frecuencia se lee GLPI: los contadores y los disparadores de escena la siguen."
+      },
+      "required": false,
+      "default": "300",
       "options": [
-        { "value": "celsius", "label": { "en": "Celsius", "fr": "Celsius" } },
-        { "value": "fahrenheit", "label": { "en": "Fahrenheit", "fr": "Fahrenheit" } }
+        {
+          "value": "60",
+          "label": {
+            "en": "1 minute",
+            "fr": "1 minute",
+            "de": "1 Minute",
+            "es": "1 minuto"
+          }
+        },
+        {
+          "value": "120",
+          "label": {
+            "en": "2 minutes",
+            "fr": "2 minutes",
+            "de": "2 Minuten",
+            "es": "2 minutos"
+          }
+        },
+        {
+          "value": "300",
+          "label": {
+            "en": "5 minutes",
+            "fr": "5 minutes",
+            "de": "5 Minuten",
+            "es": "5 minutos"
+          }
+        },
+        {
+          "value": "600",
+          "label": {
+            "en": "10 minutes",
+            "fr": "10 minutes",
+            "de": "10 Minuten",
+            "es": "10 minutos"
+          }
+        }
       ]
     },
     {
-      "key": "poll_frequency",
-      "type": "number",
-      "label": { "en": "Refresh interval (s)", "fr": "Intervalle de rafraîchissement (s)" },
+      "key": "language",
+      "type": "select",
+      "label": {
+        "en": "Language of the feature names",
+        "fr": "Langue des noms de fonctionnalités",
+        "de": "Sprache der Funktionsnamen",
+        "es": "Idioma de los nombres de funciones"
+      },
       "description": {
-        "en": "How often sensors are polled, in seconds (one minute minimum).",
-        "fr": "Fréquence d'interrogation des capteurs, en secondes (une minute minimum)."
+        "en": "Names given to the features when the device is added, and texts sent to scenes.",
+        "fr": "Noms donnés aux fonctionnalités à l'ajout de l'appareil, et textes envoyés aux scènes.",
+        "de": "Namen der Funktionen beim Hinzufügen des Geräts und an Szenen gesendete Texte.",
+        "es": "Nombres de las funciones al añadir el dispositivo y textos enviados a las escenas."
       },
       "required": false,
-      "default": 300,
-      "min": 60,
-      "max": 3600
+      "default": "fr",
+      "options": [
+        {
+          "value": "en",
+          "label": {
+            "en": "English",
+            "fr": "Anglais",
+            "de": "Englisch",
+            "es": "Inglés"
+          }
+        },
+        {
+          "value": "fr",
+          "label": {
+            "en": "French",
+            "fr": "Français",
+            "de": "Französisch",
+            "es": "Francés"
+          }
+        },
+        {
+          "value": "de",
+          "label": {
+            "en": "German",
+            "fr": "Allemand",
+            "de": "Deutsch",
+            "es": "Alemán"
+          }
+        },
+        {
+          "value": "es",
+          "label": {
+            "en": "Spanish",
+            "fr": "Espagnol",
+            "de": "Spanisch",
+            "es": "Español"
+          }
+        }
+      ]
     }
   ],
   "actions": [
     {
-      "key": "test_weather",
-      "label": { "en": "Test the weather provider", "fr": "Tester le fournisseur météo" },
+      "key": "test_connection",
+      "label": {
+        "en": "Test the connection",
+        "fr": "Tester la connexion",
+        "de": "Verbindung testen",
+        "es": "Probar la conexión"
+      },
+      "description": {
+        "en": "Reads GLPI now and reports what it finds.",
+        "fr": "Lit GLPI maintenant et indique ce qu'il trouve.",
+        "de": "Liest GLPI sofort und meldet, was es findet.",
+        "es": "Lee GLPI ahora e indica lo que encuentra."
+      },
       "timeout_seconds": 30
-    },
-    {
-      "key": "identify",
-      "label": { "en": "Identify a device", "fr": "Identifier un appareil" },
-      "fields": [
-        {
-          "key": "device",
-          "type": "select",
-          "source": "devices",
-          "label": { "en": "Device", "fr": "Appareil" },
-          "required": true
-        }
-      ]
     }
   ],
   "scene_triggers": [
     {
-      "key": "motion_detected",
-      "label": { "en": "Motion detected", "fr": "Mouvement détecté" },
+      "key": "ticket_created",
+      "label": {
+        "en": "New GLPI ticket",
+        "fr": "Nouveau ticket GLPI",
+        "de": "Neues GLPI-Ticket",
+        "es": "Nuevo ticket de GLPI"
+      },
       "description": {
-        "en": "A demo motion sensor saw a person or an animal move.",
-        "fr": "Un détecteur de démonstration a vu bouger une personne ou un animal."
+        "en": "A ticket was opened in GLPI (not those created by Gladys).",
+        "fr": "Un ticket a été ouvert dans GLPI (hors ceux créés par Gladys).",
+        "de": "Ein Ticket wurde in GLPI eröffnet (außer den von Gladys erstellten).",
+        "es": "Se ha abierto un ticket en GLPI (salvo los creados por Gladys)."
       },
       "fields": [
         {
-          "key": "device",
-          "type": "select",
-          "source": "devices",
-          "label": { "en": "Sensor", "fr": "Détecteur" }
+          "key": "urgency",
+          "type": "multi_select",
+          "label": {
+            "en": "Urgency (empty: any)",
+            "fr": "Urgence (vide : toutes)",
+            "de": "Dringlichkeit (leer: beliebig)",
+            "es": "Urgencia (vacío: cualquiera)"
+          },
+          "options": [
+            {
+              "value": "1",
+              "label": {
+                "en": "Very low",
+                "fr": "Très basse",
+                "de": "Sehr niedrig",
+                "es": "Muy baja"
+              }
+            },
+            {
+              "value": "2",
+              "label": {
+                "en": "Low",
+                "fr": "Basse",
+                "de": "Niedrig",
+                "es": "Baja"
+              }
+            },
+            {
+              "value": "3",
+              "label": {
+                "en": "Medium",
+                "fr": "Moyenne",
+                "de": "Mittel",
+                "es": "Media"
+              }
+            },
+            {
+              "value": "4",
+              "label": {
+                "en": "High",
+                "fr": "Haute",
+                "de": "Hoch",
+                "es": "Alta"
+              }
+            },
+            {
+              "value": "5",
+              "label": {
+                "en": "Very high",
+                "fr": "Très haute",
+                "de": "Sehr hoch",
+                "es": "Muy alta"
+              }
+            }
+          ]
         },
         {
-          "key": "target",
-          "type": "multi_select",
-          "label": { "en": "What moved", "fr": "Ce qui a bougé" },
+          "key": "type",
+          "type": "select",
+          "label": {
+            "en": "Type (empty: any)",
+            "fr": "Type (vide : tous)",
+            "de": "Typ (leer: beliebig)",
+            "es": "Tipo (vacío: cualquiera)"
+          },
           "options": [
-            { "value": "person", "label": { "en": "Person", "fr": "Personne" } },
-            { "value": "animal", "label": { "en": "Animal", "fr": "Animal" } }
+            {
+              "value": "1",
+              "label": {
+                "en": "Incident",
+                "fr": "Incident",
+                "de": "Störung",
+                "es": "Incidencia"
+              }
+            },
+            {
+              "value": "2",
+              "label": {
+                "en": "Request",
+                "fr": "Demande",
+                "de": "Anfrage",
+                "es": "Solicitud"
+              }
+            }
           ]
         }
       ],
       "variables": [
         {
-          "key": "target",
+          "key": "ticket_id",
+          "type": "number",
+          "label": {
+            "en": "Ticket number",
+            "fr": "Numéro du ticket",
+            "de": "Ticketnummer",
+            "es": "Número del ticket"
+          }
+        },
+        {
+          "key": "title",
           "type": "string",
-          "label": { "en": "What moved", "fr": "Ce qui a bougé" }
+          "label": {
+            "en": "Title",
+            "fr": "Titre",
+            "de": "Titel",
+            "es": "Título"
+          }
+        },
+        {
+          "key": "urgency",
+          "type": "number",
+          "label": {
+            "en": "Urgency (1 to 5)",
+            "fr": "Urgence (1 à 5)",
+            "de": "Dringlichkeit (1 bis 5)",
+            "es": "Urgencia (1 a 5)"
+          }
+        },
+        {
+          "key": "urgency_label",
+          "type": "string",
+          "label": {
+            "en": "Urgency, in words",
+            "fr": "Urgence, en toutes lettres",
+            "de": "Dringlichkeit in Worten",
+            "es": "Urgencia, en palabras"
+          }
+        },
+        {
+          "key": "type_label",
+          "type": "string",
+          "label": {
+            "en": "Type (incident or request)",
+            "fr": "Type (incident ou demande)",
+            "de": "Typ (Störung oder Anfrage)",
+            "es": "Tipo (incidencia o solicitud)"
+          }
+        },
+        {
+          "key": "status_label",
+          "type": "string",
+          "label": {
+            "en": "Status",
+            "fr": "Statut",
+            "de": "Status",
+            "es": "Estado"
+          }
+        },
+        {
+          "key": "category",
+          "type": "string",
+          "label": {
+            "en": "Category",
+            "fr": "Catégorie",
+            "de": "Kategorie",
+            "es": "Categoría"
+          }
+        },
+        {
+          "key": "entity",
+          "type": "string",
+          "label": {
+            "en": "Entity",
+            "fr": "Entité",
+            "de": "Einheit",
+            "es": "Entidad"
+          }
+        },
+        {
+          "key": "requester",
+          "type": "string",
+          "label": {
+            "en": "Requester",
+            "fr": "Demandeur",
+            "de": "Anforderer",
+            "es": "Solicitante"
+          }
+        },
+        {
+          "key": "due_date",
+          "type": "string",
+          "label": {
+            "en": "Time to resolve (GLPI time)",
+            "fr": "Temps de résolution (heure de GLPI)",
+            "de": "Zeit zur Behebung (GLPI-Zeit)",
+            "es": "Tiempo de resolución (hora de GLPI)"
+          }
+        },
+        {
+          "key": "url",
+          "type": "string",
+          "label": {
+            "en": "Link to the ticket",
+            "fr": "Lien vers le ticket",
+            "de": "Link zum Ticket",
+            "es": "Enlace al ticket"
+          }
+        }
+      ]
+    },
+    {
+      "key": "ticket_late",
+      "label": {
+        "en": "GLPI ticket late",
+        "fr": "Ticket GLPI en retard",
+        "de": "GLPI-Ticket überfällig",
+        "es": "Ticket de GLPI atrasado"
+      },
+      "description": {
+        "en": "An open ticket passed its time to resolve (SLA).",
+        "fr": "Un ticket ouvert a dépassé son temps de résolution (SLA).",
+        "de": "Ein offenes Ticket hat seine Zeit zur Behebung (SLA) überschritten.",
+        "es": "Un ticket abierto ha superado su tiempo de resolución (SLA)."
+      },
+      "fields": [
+        {
+          "key": "urgency",
+          "type": "multi_select",
+          "label": {
+            "en": "Urgency (empty: any)",
+            "fr": "Urgence (vide : toutes)",
+            "de": "Dringlichkeit (leer: beliebig)",
+            "es": "Urgencia (vacío: cualquiera)"
+          },
+          "options": [
+            {
+              "value": "1",
+              "label": {
+                "en": "Very low",
+                "fr": "Très basse",
+                "de": "Sehr niedrig",
+                "es": "Muy baja"
+              }
+            },
+            {
+              "value": "2",
+              "label": {
+                "en": "Low",
+                "fr": "Basse",
+                "de": "Niedrig",
+                "es": "Baja"
+              }
+            },
+            {
+              "value": "3",
+              "label": {
+                "en": "Medium",
+                "fr": "Moyenne",
+                "de": "Mittel",
+                "es": "Media"
+              }
+            },
+            {
+              "value": "4",
+              "label": {
+                "en": "High",
+                "fr": "Haute",
+                "de": "Hoch",
+                "es": "Alta"
+              }
+            },
+            {
+              "value": "5",
+              "label": {
+                "en": "Very high",
+                "fr": "Très haute",
+                "de": "Sehr hoch",
+                "es": "Muy alta"
+              }
+            }
+          ]
+        },
+        {
+          "key": "type",
+          "type": "select",
+          "label": {
+            "en": "Type (empty: any)",
+            "fr": "Type (vide : tous)",
+            "de": "Typ (leer: beliebig)",
+            "es": "Tipo (vacío: cualquiera)"
+          },
+          "options": [
+            {
+              "value": "1",
+              "label": {
+                "en": "Incident",
+                "fr": "Incident",
+                "de": "Störung",
+                "es": "Incidencia"
+              }
+            },
+            {
+              "value": "2",
+              "label": {
+                "en": "Request",
+                "fr": "Demande",
+                "de": "Anfrage",
+                "es": "Solicitud"
+              }
+            }
+          ]
+        }
+      ],
+      "variables": [
+        {
+          "key": "ticket_id",
+          "type": "number",
+          "label": {
+            "en": "Ticket number",
+            "fr": "Numéro du ticket",
+            "de": "Ticketnummer",
+            "es": "Número del ticket"
+          }
+        },
+        {
+          "key": "title",
+          "type": "string",
+          "label": {
+            "en": "Title",
+            "fr": "Titre",
+            "de": "Titel",
+            "es": "Título"
+          }
+        },
+        {
+          "key": "urgency",
+          "type": "number",
+          "label": {
+            "en": "Urgency (1 to 5)",
+            "fr": "Urgence (1 à 5)",
+            "de": "Dringlichkeit (1 bis 5)",
+            "es": "Urgencia (1 a 5)"
+          }
+        },
+        {
+          "key": "urgency_label",
+          "type": "string",
+          "label": {
+            "en": "Urgency, in words",
+            "fr": "Urgence, en toutes lettres",
+            "de": "Dringlichkeit in Worten",
+            "es": "Urgencia, en palabras"
+          }
+        },
+        {
+          "key": "type_label",
+          "type": "string",
+          "label": {
+            "en": "Type (incident or request)",
+            "fr": "Type (incident ou demande)",
+            "de": "Typ (Störung oder Anfrage)",
+            "es": "Tipo (incidencia o solicitud)"
+          }
+        },
+        {
+          "key": "status_label",
+          "type": "string",
+          "label": {
+            "en": "Status",
+            "fr": "Statut",
+            "de": "Status",
+            "es": "Estado"
+          }
+        },
+        {
+          "key": "category",
+          "type": "string",
+          "label": {
+            "en": "Category",
+            "fr": "Catégorie",
+            "de": "Kategorie",
+            "es": "Categoría"
+          }
+        },
+        {
+          "key": "entity",
+          "type": "string",
+          "label": {
+            "en": "Entity",
+            "fr": "Entité",
+            "de": "Einheit",
+            "es": "Entidad"
+          }
+        },
+        {
+          "key": "requester",
+          "type": "string",
+          "label": {
+            "en": "Requester",
+            "fr": "Demandeur",
+            "de": "Anforderer",
+            "es": "Solicitante"
+          }
+        },
+        {
+          "key": "due_date",
+          "type": "string",
+          "label": {
+            "en": "Time to resolve (GLPI time)",
+            "fr": "Temps de résolution (heure de GLPI)",
+            "de": "Zeit zur Behebung (GLPI-Zeit)",
+            "es": "Tiempo de resolución (hora de GLPI)"
+          }
+        },
+        {
+          "key": "url",
+          "type": "string",
+          "label": {
+            "en": "Link to the ticket",
+            "fr": "Lien vers le ticket",
+            "de": "Link zum Ticket",
+            "es": "Enlace al ticket"
+          }
+        }
+      ]
+    },
+    {
+      "key": "ticket_solved",
+      "label": {
+        "en": "GLPI ticket solved",
+        "fr": "Ticket GLPI résolu",
+        "de": "GLPI-Ticket gelöst",
+        "es": "Ticket de GLPI resuelto"
+      },
+      "description": {
+        "en": "A ticket open at the previous reading is now solved or closed.",
+        "fr": "Un ticket ouvert à la lecture précédente est maintenant résolu ou clos.",
+        "de": "Ein beim vorigen Lesen offenes Ticket ist jetzt gelöst oder geschlossen.",
+        "es": "Un ticket abierto en la lectura anterior está ahora resuelto o cerrado."
+      },
+      "fields": [
+        {
+          "key": "urgency",
+          "type": "multi_select",
+          "label": {
+            "en": "Urgency (empty: any)",
+            "fr": "Urgence (vide : toutes)",
+            "de": "Dringlichkeit (leer: beliebig)",
+            "es": "Urgencia (vacío: cualquiera)"
+          },
+          "options": [
+            {
+              "value": "1",
+              "label": {
+                "en": "Very low",
+                "fr": "Très basse",
+                "de": "Sehr niedrig",
+                "es": "Muy baja"
+              }
+            },
+            {
+              "value": "2",
+              "label": {
+                "en": "Low",
+                "fr": "Basse",
+                "de": "Niedrig",
+                "es": "Baja"
+              }
+            },
+            {
+              "value": "3",
+              "label": {
+                "en": "Medium",
+                "fr": "Moyenne",
+                "de": "Mittel",
+                "es": "Media"
+              }
+            },
+            {
+              "value": "4",
+              "label": {
+                "en": "High",
+                "fr": "Haute",
+                "de": "Hoch",
+                "es": "Alta"
+              }
+            },
+            {
+              "value": "5",
+              "label": {
+                "en": "Very high",
+                "fr": "Très haute",
+                "de": "Sehr hoch",
+                "es": "Muy alta"
+              }
+            }
+          ]
+        },
+        {
+          "key": "type",
+          "type": "select",
+          "label": {
+            "en": "Type (empty: any)",
+            "fr": "Type (vide : tous)",
+            "de": "Typ (leer: beliebig)",
+            "es": "Tipo (vacío: cualquiera)"
+          },
+          "options": [
+            {
+              "value": "1",
+              "label": {
+                "en": "Incident",
+                "fr": "Incident",
+                "de": "Störung",
+                "es": "Incidencia"
+              }
+            },
+            {
+              "value": "2",
+              "label": {
+                "en": "Request",
+                "fr": "Demande",
+                "de": "Anfrage",
+                "es": "Solicitud"
+              }
+            }
+          ]
+        }
+      ],
+      "variables": [
+        {
+          "key": "ticket_id",
+          "type": "number",
+          "label": {
+            "en": "Ticket number",
+            "fr": "Numéro du ticket",
+            "de": "Ticketnummer",
+            "es": "Número del ticket"
+          }
+        },
+        {
+          "key": "title",
+          "type": "string",
+          "label": {
+            "en": "Title",
+            "fr": "Titre",
+            "de": "Titel",
+            "es": "Título"
+          }
+        },
+        {
+          "key": "urgency",
+          "type": "number",
+          "label": {
+            "en": "Urgency (1 to 5)",
+            "fr": "Urgence (1 à 5)",
+            "de": "Dringlichkeit (1 bis 5)",
+            "es": "Urgencia (1 a 5)"
+          }
+        },
+        {
+          "key": "urgency_label",
+          "type": "string",
+          "label": {
+            "en": "Urgency, in words",
+            "fr": "Urgence, en toutes lettres",
+            "de": "Dringlichkeit in Worten",
+            "es": "Urgencia, en palabras"
+          }
+        },
+        {
+          "key": "type_label",
+          "type": "string",
+          "label": {
+            "en": "Type (incident or request)",
+            "fr": "Type (incident ou demande)",
+            "de": "Typ (Störung oder Anfrage)",
+            "es": "Tipo (incidencia o solicitud)"
+          }
+        },
+        {
+          "key": "status_label",
+          "type": "string",
+          "label": {
+            "en": "Status",
+            "fr": "Statut",
+            "de": "Status",
+            "es": "Estado"
+          }
+        },
+        {
+          "key": "category",
+          "type": "string",
+          "label": {
+            "en": "Category",
+            "fr": "Catégorie",
+            "de": "Kategorie",
+            "es": "Categoría"
+          }
+        },
+        {
+          "key": "entity",
+          "type": "string",
+          "label": {
+            "en": "Entity",
+            "fr": "Entité",
+            "de": "Einheit",
+            "es": "Entidad"
+          }
+        },
+        {
+          "key": "requester",
+          "type": "string",
+          "label": {
+            "en": "Requester",
+            "fr": "Demandeur",
+            "de": "Anforderer",
+            "es": "Solicitante"
+          }
+        },
+        {
+          "key": "due_date",
+          "type": "string",
+          "label": {
+            "en": "Time to resolve (GLPI time)",
+            "fr": "Temps de résolution (heure de GLPI)",
+            "de": "Zeit zur Behebung (GLPI-Zeit)",
+            "es": "Tiempo de resolución (hora de GLPI)"
+          }
+        },
+        {
+          "key": "url",
+          "type": "string",
+          "label": {
+            "en": "Link to the ticket",
+            "fr": "Lien vers le ticket",
+            "de": "Link zum Ticket",
+            "es": "Enlace al ticket"
+          }
+        },
+        {
+          "key": "solved_date",
+          "type": "string",
+          "label": {
+            "en": "Resolution date (GLPI time)",
+            "fr": "Date de résolution (heure de GLPI)",
+            "de": "Lösungsdatum (GLPI-Zeit)",
+            "es": "Fecha de resolución (hora de GLPI)"
+          }
         }
       ]
     }
   ],
   "scene_actions": [
     {
-      "key": "identify_device",
-      "label": { "en": "Identify a device", "fr": "Identifier un appareil" },
-      "description": {
-        "en": "Make a device signal itself (the demo light blinks).",
-        "fr": "Fait se signaler un appareil (la lampe de démonstration clignote)."
+      "key": "create_ticket",
+      "label": {
+        "en": "Create a GLPI ticket",
+        "fr": "Créer un ticket GLPI",
+        "de": "GLPI-Ticket erstellen",
+        "es": "Crear un ticket de GLPI"
       },
-      "timeout_seconds": 15,
+      "description": {
+        "en": "Opens a ticket, requested by the user of the token.",
+        "fr": "Ouvre un ticket, au nom de l'utilisateur du jeton.",
+        "de": "Eröffnet ein Ticket im Namen des Benutzers des Tokens.",
+        "es": "Abre un ticket, en nombre del usuario del token."
+      },
+      "timeout_seconds": 20,
       "fields": [
         {
-          "key": "device",
+          "key": "title",
+          "type": "string",
+          "required": true,
+          "label": {
+            "en": "Title",
+            "fr": "Titre",
+            "de": "Titel",
+            "es": "Título"
+          }
+        },
+        {
+          "key": "description",
+          "type": "string",
+          "label": {
+            "en": "Description (empty: the title)",
+            "fr": "Description (vide : le titre)",
+            "de": "Beschreibung (leer: der Titel)",
+            "es": "Descripción (vacío: el título)"
+          },
+          "description": {
+            "en": "Scene variables are welcome: the sensor and its value, the time…",
+            "fr": "Les variables de scène sont bienvenues : le capteur et sa valeur, l'heure…",
+            "de": "Szenenvariablen sind willkommen: der Sensor und sein Wert, die Uhrzeit …",
+            "es": "Las variables de escena son bienvenidas: el sensor y su valor, la hora…"
+          }
+        },
+        {
+          "key": "urgency",
           "type": "select",
-          "source": "devices",
-          "label": { "en": "Device", "fr": "Appareil" },
-          "required": true
+          "label": {
+            "en": "Urgency (empty: medium)",
+            "fr": "Urgence (vide : moyenne)",
+            "de": "Dringlichkeit (leer: mittel)",
+            "es": "Urgencia (vacío: media)"
+          },
+          "options": [
+            {
+              "value": "1",
+              "label": {
+                "en": "Very low",
+                "fr": "Très basse",
+                "de": "Sehr niedrig",
+                "es": "Muy baja"
+              }
+            },
+            {
+              "value": "2",
+              "label": {
+                "en": "Low",
+                "fr": "Basse",
+                "de": "Niedrig",
+                "es": "Baja"
+              }
+            },
+            {
+              "value": "3",
+              "label": {
+                "en": "Medium",
+                "fr": "Moyenne",
+                "de": "Mittel",
+                "es": "Media"
+              }
+            },
+            {
+              "value": "4",
+              "label": {
+                "en": "High",
+                "fr": "Haute",
+                "de": "Hoch",
+                "es": "Alta"
+              }
+            },
+            {
+              "value": "5",
+              "label": {
+                "en": "Very high",
+                "fr": "Très haute",
+                "de": "Sehr hoch",
+                "es": "Muy alta"
+              }
+            }
+          ]
+        },
+        {
+          "key": "type",
+          "type": "select",
+          "label": {
+            "en": "Type (empty: incident)",
+            "fr": "Type (vide : incident)",
+            "de": "Typ (leer: Störung)",
+            "es": "Tipo (vacío: incidencia)"
+          },
+          "options": [
+            {
+              "value": "1",
+              "label": {
+                "en": "Incident",
+                "fr": "Incident",
+                "de": "Störung",
+                "es": "Incidencia"
+              }
+            },
+            {
+              "value": "2",
+              "label": {
+                "en": "Request",
+                "fr": "Demande",
+                "de": "Anfrage",
+                "es": "Solicitud"
+              }
+            }
+          ]
+        },
+        {
+          "key": "category",
+          "type": "string",
+          "label": {
+            "en": "Category name or number (optional)",
+            "fr": "Nom ou numéro de la catégorie (facultatif)",
+            "de": "Name oder Nummer der Kategorie (optional)",
+            "es": "Nombre o número de la categoría (opcional)"
+          }
+        },
+        {
+          "key": "entity",
+          "type": "string",
+          "label": {
+            "en": "Entity name or number (empty: the default one)",
+            "fr": "Nom ou numéro de l'entité (vide : celle par défaut)",
+            "de": "Name oder Nummer der Einheit (leer: die Standardeinheit)",
+            "es": "Nombre o número de la entidad (vacío: la predeterminada)"
+          }
         }
       ],
       "outputs": [
         {
-          "key": "signalled",
-          "type": "boolean",
-          "label": { "en": "Device signalled", "fr": "Appareil signalé" }
+          "key": "ticket_id",
+          "type": "number",
+          "label": {
+            "en": "Ticket number",
+            "fr": "Numéro du ticket",
+            "de": "Ticketnummer",
+            "es": "Número del ticket"
+          }
+        },
+        {
+          "key": "url",
+          "type": "string",
+          "label": {
+            "en": "Link to the ticket",
+            "fr": "Lien vers le ticket",
+            "de": "Link zum Ticket",
+            "es": "Enlace al ticket"
+          }
+        }
+      ]
+    },
+    {
+      "key": "add_followup",
+      "label": {
+        "en": "Add a follow-up to a GLPI ticket",
+        "fr": "Ajouter un suivi à un ticket GLPI",
+        "de": "Antwort zu einem GLPI-Ticket hinzufügen",
+        "es": "Añadir un seguimiento a un ticket de GLPI"
+      },
+      "description": {
+        "en": "Adds a follow-up, written by the user of the token.",
+        "fr": "Ajoute un suivi, au nom de l'utilisateur du jeton.",
+        "de": "Fügt eine Antwort im Namen des Benutzers des Tokens hinzu.",
+        "es": "Añade un seguimiento, en nombre del usuario del token."
+      },
+      "timeout_seconds": 20,
+      "fields": [
+        {
+          "key": "ticket",
+          "type": "string",
+          "required": true,
+          "label": {
+            "en": "Ticket number (#125)",
+            "fr": "Numéro du ticket (#125)",
+            "de": "Ticketnummer (#125)",
+            "es": "Número del ticket (#125)"
+          },
+          "description": {
+            "en": "A number, or the output of \"Create a GLPI ticket\" earlier in the scene.",
+            "fr": "Un numéro, ou la sortie de « Créer un ticket GLPI » plus tôt dans la scène.",
+            "de": "Eine Nummer oder die Ausgabe von „GLPI-Ticket erstellen“ weiter oben in der Szene.",
+            "es": "Un número, o la salida de «Crear un ticket de GLPI» antes en la escena."
+          }
+        },
+        {
+          "key": "text",
+          "type": "string",
+          "required": true,
+          "label": {
+            "en": "Text",
+            "fr": "Texte",
+            "de": "Text",
+            "es": "Texto"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "key": "ticket_id",
+          "type": "number",
+          "label": {
+            "en": "Ticket number",
+            "fr": "Numéro du ticket",
+            "de": "Ticketnummer",
+            "es": "Número del ticket"
+          }
+        },
+        {
+          "key": "title",
+          "type": "string",
+          "label": {
+            "en": "Title",
+            "fr": "Titre",
+            "de": "Titel",
+            "es": "Título"
+          }
         }
       ]
     }
   ],
   "widgets": [
     {
-      "key": "demo_status",
-      "label": { "en": "Demo status", "fr": "État de la démo" },
-      "description": {
-        "en": "Live temperature and plug power, plug connection and observed location.",
-        "fr": "Température et puissance en direct, connexion de la prise, position observée."
+      "key": "latest_tickets",
+      "label": {
+        "en": "Latest GLPI tickets",
+        "fr": "Derniers tickets GLPI",
+        "de": "Neueste GLPI-Tickets",
+        "es": "Últimos tickets de GLPI"
       },
-      "icon": "activity",
-      "action_timeout_seconds": 15
+      "description": {
+        "en": "Open and late tickets, and the newest open tickets.",
+        "fr": "Tickets ouverts et en retard, et les derniers tickets ouverts.",
+        "de": "Offene und überfällige Tickets und die neuesten offenen Tickets.",
+        "es": "Tickets abiertos y atrasados, y los últimos tickets abiertos."
+      },
+      "icon": "inbox"
     }
   ]
 }

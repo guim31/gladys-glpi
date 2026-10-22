@@ -1,77 +1,81 @@
+// -----------------------------------------------------------------------------
+// The "latest tickets" widget: content within the core budget (validated by
+// the SDK's validateWidgetContent), late and urgent tickets flagged, links in
+// HTTPS only, and the degraded states.
+// -----------------------------------------------------------------------------
+
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { validateWidgetContent } from '@gladysassistant/integration-sdk';
-import { createFakeGladys } from '@gladysassistant/integration-sdk/testing';
-import { buildDiscoveredDevices } from '../src/devices/index.js';
-import { simulateLanSession } from '../src/devices/plug.js';
-import { DEMO_STATUS_WIDGET, WIDGETS, refreshWidgets } from '../src/widgets.js';
-import { normalizeConfig } from '../src/config.js';
+import { BASE_CONFIG, URL_CLOUD, createWorld } from './helpers/world.js';
 
-const gladys = createFakeGladys();
-const config = normalizeConfig();
-const demoStatus = WIDGETS[DEMO_STATUS_WIDGET];
+async function world(t, options = {}) {
+  const w = await createWorld(options);
+  t.after(() => w.app.stop());
+  return w;
+}
 
-// What the SDK passes to onWidgetGet, plus the config index.js adds.
-const getContent = (cfg = config) =>
-  demoStatus.get(gladys, { settings: {}, language: 'en', units: 'metric', config: cfg });
+async function content(w, language = 'en') {
+  const ack = await w.fake.widgetGet('latest_tickets', { settings: {}, language, units: 'metric' });
+  assert.equal(ack.success, true, ack.error);
+  const { content: tree } = ack.data;
+  assert.deepEqual(validateWidgetContent(tree), [], 'within the core vocabulary and budget');
+  return tree;
+}
 
-test('the demo_status content is rendered exactly as sent', async () => {
-  // [] = nothing the core would drop, truncate or trim to the content budget.
-  assert.deepEqual(validateWidgetContent(await getContent()), []);
-});
+const ofType = (data, type) => data.components.filter((component) => component.type === type);
 
-test('the degraded plug connection content is valid too', async () => {
-  simulateLanSession(false);
-  try {
-    const content = await getContent();
-    assert.deepEqual(validateWidgetContent(content), []);
-    const status = content.components.find((component) => component.type === 'status');
-    assert.ok(
-      status.items.some((item) => item.color === 'warning'),
-      'degraded shows a warning',
-    );
-  } finally {
-    simulateLanSession(true);
-  }
-});
-
-test('the live tiles reference features the integration publishes', async () => {
-  const featureIds = new Set(
-    buildDiscoveredDevices(gladys, config).flatMap((device) =>
-      device.features.map((feature) => feature.external_id),
-    ),
+test('three tiles and the newest open tickets, late and urgent ones flagged', async (t) => {
+  const w = await world(t);
+  const data = await content(w);
+  assert.deepEqual(
+    ofType(data, 'value').map((tile) => [tile.label, tile.value]),
+    [
+      ['Open', 6],
+      ['Late', 1],
+      ['New', 5],
+    ],
   );
-  const liveTiles = (await getContent()).components.filter((c) => c.device_feature);
-  assert.ok(liveTiles.length > 0, 'the template demonstrates a device-bound tile');
-  for (const tile of liveTiles) {
-    assert.ok(featureIds.has(tile.device_feature), `unknown feature ${tile.device_feature}`);
-  }
-});
-
-test('every button action of the content is handled and answers a short toast', async () => {
-  const buttons = (await getContent()).components.filter((c) => c.type === 'button' && c.action);
-  assert.ok(buttons.length > 0, 'the template demonstrates a widget action');
-  for (const { action } of buttons) {
-    const message = await demoStatus.action(gladys, {
-      actionKey: action.key,
-      params: action.params ?? {},
-      settings: {},
-      config,
-    });
-    assert.ok(message.en, 'the toast carries at least the mandatory `en` text');
-    assert.ok(message.en.length <= 200, 'toasts are capped at 200 characters');
-  }
-});
-
-test('an unknown widget action fails, so the user sees the error', async () => {
-  await assert.rejects(
-    demoStatus.action(gladys, { actionKey: 'unknown', params: {}, settings: {}, config }),
-    /Unknown widget action/,
+  const items = ofType(data, 'card-list')[0].items;
+  assert.deepEqual(
+    items.map((item) => [item.title, item.subtitle, item.badge?.text ?? null]),
+    [
+      ['#8 Fuite d eau détectée', 'New · Very high · Root entity', 'Very high'],
+      ['#7 #7', 'New · Medium · Root entity', null],
+      ['#4 Imprimante bloquée', 'New · Low · Root entity > Site Nord', 'Late'],
+      ['#3 Mot de passe oublié', 'New · Very high · Root entity', 'Very high'],
+      ['#2 Wi-Fi lent en salle de réunion', 'Pending · Medium · Root entity', null],
+      ['#1 Panne de la box internet', 'New · High · Root entity', 'High'],
+    ],
+  );
+  assert.ok(
+    items.every((item) => item.links === undefined),
+    'no link to an http:// GLPI',
   );
 });
 
-test('refreshWidgets nudges every widget', () => {
-  const fresh = createFakeGladys();
-  refreshWidgets(fresh);
-  assert.deepEqual(fresh.fake.widgetRefreshes, Object.keys(WIDGETS));
+test('in French, with links to an https:// GLPI', async (t) => {
+  const w = await world(t, { config: { ...BASE_CONFIG, url: URL_CLOUD } });
+  const data = await content(w, 'fr');
+  assert.equal(ofType(data, 'value')[1].label, 'En retard');
+  const [first] = ofType(data, 'card-list')[0].items;
+  assert.deepEqual(first.links, [
+    { url: `${URL_CLOUD}/front/ticket.form.php?id=8`, label: 'Ouvrir dans GLPI' },
+  ]);
+});
+
+test('no open ticket, GLPI down, not configured', async (t) => {
+  const w = await world(t);
+  w.server.tickets = w.server.tickets.filter((ticket) => ticket.status >= 5);
+  await w.hub.poll();
+  let data = await content(w);
+  assert.equal(ofType(data, 'text')[0].text, 'No open ticket.');
+  w.server.online = false;
+  await w.hub.poll();
+  data = await content(w);
+  assert.equal(ofType(data, 'text')[0].text, 'GLPI does not answer: last known tickets.');
+  const down = await world(t, { config: { ...BASE_CONFIG, url: 'http://198.51.100.9' } });
+  assert.match(ofType(await content(down), 'text')[0].text, /GLPI does not answer/);
+  const empty = await world(t, { config: {} });
+  assert.match(ofType(await content(empty), 'text')[0].text, /Enter the address/);
 });
