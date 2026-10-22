@@ -1,67 +1,186 @@
-# Template de démonstration
+# GLPI
 
-Ceci est la documentation utilisateur de l'intégration. Gladys ré-héberge ce
-fichier et affiche un lien **Documentation** permanent vers lui dans l'écran
-de configuration (dans la langue de l'utilisateur, avec l'anglais en repli) —
-c'est au moment de configurer que l'utilisateur en a le plus besoin. Gardez
-les courtes indications d'accueil dans les blocs `section` du `config_schema`
-du manifest ; mettez ici le pas-à-pas détaillé (captures d'écran, dépannage…).
+Les tickets de votre [GLPI](https://glpi-project.org) dans Gladys : combien sont
+ouverts, en attente, en retard sur leur SLA, combien ont été résolus aujourd'hui.
+Une scène réagit à l'arrivée d'un nouveau ticket, à un ticket qui passe en
+retard ou à un ticket résolu, et Gladys peut **ouvrir un ticket toute seule**
+quand elle détecte une panne : une fuite d'eau, un congélateur trop chaud, une
+imprimante ou une box qui ne répond plus.
 
-## Ce que vous obtenez
+> **Vos retours sont les bienvenus.** Cette intégration a été testée contre de
+> vrais serveurs GLPI (images Docker officielles `glpi/glpi` 10.0.28, 11.0.11 et
+> 12.0.0, octobre 2026), pas encore au quotidien dans un vrai service. Si quelque
+> chose ne marche pas comme décrit, dites-le sur le
+> [forum Gladys](https://community.gladysassistant.com) ou dans les
+> [issues](https://github.com/guim31/gladys-glpi/issues).
 
-Six appareils de démonstration apparaissent après l'installation : une
-station météo (vraies données Open-Meteo), un interrupteur, une lampe
-variable, une prise connectée avec mesure de puissance, un détecteur de
-mouvement et une caméra.
+## Ce qu'il vous faut
 
-## Configuration
+- Gladys Assistant 5.1.0 ou plus récent.
+- Un **GLPI 10, 11 ou 12**, auto-hébergé ou hébergé (GLPI Network Cloud), joignable
+  depuis Gladys. L'intégration utilise l'API REST historique de GLPI
+  (`apirest.php`), présente dans ces trois versions.
+- Un **utilisateur GLPI** au nom duquel Gladys lit et crée les tickets. Le mieux
+  est d'en créer un pour elle (`gladys`) :
+  - avec le profil **Technicien** (ou un profil qui voit tous les tickets) sur
+    les entités à suivre : les compteurs comptent alors tous les tickets de ces
+    entités ;
+  - ou avec le profil **Self-Service** : Gladys ne voit alors que les tickets
+    dont elle est demandeuse, ce qui suffit pour ouvrir des tickets de panne.
 
-1. Ouvrez l'onglet **Configuration** de l'intégration.
-2. Renseignez la **latitude** et la **longitude** que la station météo de
-   démonstration doit observer (Paris par défaut), et choisissez votre unité
-   de température. L'**intervalle de rafraîchissement** règle la fréquence
-   de lecture de la station météo et de la puissance de la prise : toutes
-   les 5 minutes par défaut, toutes les minutes au plus.
-3. Enregistrez : les appareils apparaissent dans l'onglet **Découverte**,
-   prêts à être ajoutés.
+  L'intégration voit exactement ce que voit cet utilisateur dans GLPI (son profil
+  par défaut, ses entités et leurs sous-entités).
 
-Le réglage **Préférer la connexion locale** pilote la prise de
-démonstration : elle affiche en badge le canal réellement utilisé (local ou
-cloud), avec un point orange quand elle fonctionne en mode dégradé (local
-refusé, bascule cloud).
+## Installation
 
-## Actions
+### Dans GLPI
 
-- **Tester le fournisseur météo** — effectue une requête en direct vers
-  Open-Meteo et affiche la température et l'humidité actuelles sous le
-  bouton.
-- **Identifier un appareil** — choisissez un de vos appareils dans la liste
-  et il se signale (la lampe de démonstration « clignote » dans les logs).
+1. **Configuration** → **Générale** → onglet **API** :
+   - activez **Activer l'API REST legacy** (GLPI 11 et 12) ou **Activer l'API
+     Rest** (GLPI 10) ;
+   - activez **Activer la connexion avec un jeton externe**.
+2. Dans la liste **Clients de l'API** du même onglet, autorisez l'adresse de
+   Gladys : le client par défaut (« full access from localhost ») n'accepte que
+   `127.0.0.1`. Ajoutez un client (ou modifiez celui-ci) avec, en **Début de
+   plage IPv4** et **Fin de plage IPv4**, l'adresse de la machine Gladys vue par
+   GLPI, ou laissez la plage vide pour accepter toutes les adresses. Si vous
+   remplissez un **Jeton d'application** (`app_token`), recopiez-le dans Gladys.
+3. Ouvrez la fiche de l'utilisateur `gladys` (ou ses préférences, connecté sous
+   son nom). Au champ **Jeton d'API**, cochez **Regénérer**, enregistrez, puis
+   copiez le jeton affiché.
 
-## Scènes
+### Dans Gladys
 
-L'intégration ajoute ses propres cartes à l'éditeur de scènes (Gladys 5.1
-ou plus récent), dans la catégorie **Intégrations** :
+1. **Intégrations** → installez **GLPI**.
+2. Dans l'écran **Configuration**, renseignez :
+   - **Adresse** : l'adresse de GLPI telle que dans le navigateur, par exemple
+     `https://helpdesk.example.org` ou `http://192.168.1.30/glpi` (le dossier
+     `/glpi` est conservé, `/front/…` ou `/apirest.php` sont retirés) ;
+   - **Jeton utilisateur** : le jeton d'API copié à l'étape 3 ;
+   - **Jeton d'application** : seulement si le client de l'API en a un ;
+   - **Accepter les certificats auto-signés** : pour un GLPI en `https://` avec
+     un certificat auto-signé ;
+   - **Intervalle de rafraîchissement** : 1, 2, 5 (par défaut) ou 10 minutes ;
+   - **Langue des noms de fonctionnalités** : la langue des noms donnés à
+     l'appareil et des textes envoyés aux scènes (urgence, type, statut).
+3. **Tester la connexion** indique la version de GLPI, l'utilisateur et son
+   profil, et le nombre de tickets ouverts.
+4. Onglet **Découverte** : ajoutez l'appareil **GLPI**.
 
-- **Mouvement détecté** (déclencheur) — lance la scène quand un détecteur
-  de démonstration voit bouger quelque chose. Choisissez éventuellement le
-  détecteur et ce qui a bougé (personne, animal) ; laissés vides, toute
-  détection correspond. Les actions suivantes peuvent lire ce qui a bougé
-  avec `{{triggerEvent.data.target}}`.
-- **Identifier un appareil** (action) — fait se signaler l'appareil choisi.
-  Elle indique si l'appareil a pu se signaler, pour que les actions
-  suivantes puissent en dépendre.
+## Appareil
+
+Un appareil **GLPI**, avec six compteurs mis à jour à chaque lecture :
+
+| Fonctionnalité              | Ce qu'elle compte                                                          |
+| --------------------------- | -------------------------------------------------------------------------- |
+| Tickets ouverts             | les tickets non résolus : nouveaux, en cours et en attente                 |
+| Nouveaux tickets            | les tickets au statut Nouveau                                              |
+| Tickets en cours            | les tickets En cours (attribué ou planifié)                                |
+| Tickets en attente          | les tickets En attente                                                     |
+| Tickets en retard           | les tickets ouverts dont le temps de résolution (SLA) est dépassé          |
+| Tickets résolus aujourd'hui | les tickets résolus (ou résolus puis clos) depuis minuit, heure du serveur |
+
+« En retard » est le **Temps de résolution dépassé** calculé par GLPI lui-même :
+un ticket sans temps de résolution n'est jamais en retard. Les compteurs gardent
+leur historique, et servent de conditions dans les scènes (« si Tickets en
+retard est supérieur à 0 »).
 
 ## Tableau de bord
 
-Ajoutez le widget **État de la démo** à un tableau de bord : il affiche en
-direct la température de la station météo et la puissance de la prise du
-bureau, la connexion utilisée par la prise (en orange si dégradée) et la
-position observée. Son bouton **Identifier la lampe** fait se signaler la
-lampe de démonstration.
+Le widget **Derniers tickets GLPI** montre trois tuiles (ouverts, en retard,
+nouveaux) et les huit derniers tickets ouverts, avec leur statut, leur urgence et
+leur entité. Un ticket en retard porte la pastille « En retard », un ticket
+d'urgence haute ou très haute la pastille de son urgence. Si GLPI est en
+`https://`, chaque ticket propose un lien **Ouvrir dans GLPI**.
+
+## Scènes
+
+### Déclencheurs
+
+Les trois déclencheurs se filtrent par **Urgence** (une ou plusieurs, vide :
+toutes) et par **Type** (incident ou demande, vide : tous).
+
+- **Nouveau ticket GLPI** : un ticket a été ouvert dans GLPI, par un utilisateur,
+  un collecteur de courriels ou un formulaire. Les tickets créés par Gladys
+  elle-même ne déclenchent rien (pas de boucle).
+- **Ticket GLPI en retard** : un ticket ouvert vient de dépasser son temps de
+  résolution.
+- **Ticket GLPI résolu** : un ticket ouvert à la lecture précédente est
+  maintenant résolu ou clos.
+
+Variables transmises aux actions : numéro du ticket, titre, urgence (de 1 à 5 et
+en toutes lettres), type, statut, catégorie, entité, demandeur, temps de
+résolution, lien vers le ticket, et la date de résolution pour un ticket résolu.
+Les dates sont celles qu'affiche GLPI (heure du serveur GLPI).
+
+Les événements sont détectés à chaque lecture : ils arrivent au plus tard un
+intervalle de rafraîchissement après les faits. À la toute première lecture
+(ou après un changement de serveur ou d'utilisateur), l'intégration prend note
+de l'existant sans rien déclencher. Une lecture déclenche au plus 30 événements
+(un import en masse ne noie pas Gladys).
+
+### Actions
+
+- **Créer un ticket GLPI** : ouvre un ticket au nom de l'utilisateur du jeton,
+  qui en est le demandeur. Champs : **Titre** (obligatoire), **Description**
+  (vide : le titre ; les variables de scène y sont les bienvenues), **Urgence**
+  (vide : moyenne), **Type** (vide : incident), **Catégorie** (nom ou numéro,
+  facultatif) et **Entité** (nom ou numéro, vide : l'entité par défaut de
+  l'utilisateur). Sorties : le numéro du ticket et son lien.
+- **Ajouter un suivi à un ticket GLPI** : ajoute un suivi au ticket indiqué par
+  son numéro (`125` ou `#125`), au nom de l'utilisateur du jeton. Le numéro peut
+  venir d'un « Créer un ticket GLPI » plus haut dans la scène, ou du déclencheur.
+  Sorties : le numéro et le titre du ticket.
+
+Une catégorie ou une entité se donne par son numéro, son nom complet
+(`Entité racine > Site Nord`) ou la dernière partie de ce nom (`Site Nord`),
+sans tenir compte des majuscules ni des accents.
+
+### Idées de scènes
+
+- **Fuite d'eau** : le détecteur de fuite de la chaufferie passe à « fuite » →
+  **Créer un ticket GLPI** « Fuite d'eau en chaufferie », urgence très haute,
+  catégorie « Bâtiment », description avec l'heure ; puis un message Gladys avec
+  le lien du ticket.
+- **Box internet injoignable** : le ping de la box échoue depuis 10 minutes →
+  ticket « Plus d'internet au bureau » ; quand le ping revient, **Ajouter un
+  suivi** « Connexion revenue à 14 h 32 » au même ticket.
+- **Astreinte** : **Nouveau ticket GLPI** filtré sur les urgences haute et très
+  haute → message Telegram au technicien d'astreinte avec le titre, le demandeur
+  et le lien ; **Ticket GLPI en retard** → allumer la lampe de l'open space en
+  rouge.
 
 ## Dépannage
 
-L'intégration journalise tout ce qu'elle fait : consultez les logs de
-l'intégration depuis l'interface Gladys (ou `docker logs` sur l'hôte) avec
-`LOG_LEVEL=debug` pour le détail complet.
+- **« aucune API GLPI à cette adresse »** : vérifiez l'adresse (avec le dossier
+  `/glpi` s'il y en a un) en ouvrant `…/apirest.php` dans un navigateur : GLPI
+  doit répondre par sa page de documentation de l'API.
+- **« l'API REST est désactivée »** : voir l'étape 1 dans GLPI.
+- **« aucun client d'API n'accepte l'adresse de Gladys »** : la plage d'adresses
+  du client de l'API (étape 2) ne contient pas l'adresse de Gladys vue par GLPI
+  (derrière un proxy ou un NAT, c'est l'adresse de ce proxy ou de ce routeur).
+- **« jeton d'application manquant ou erroné »** : le client de l'API a un jeton
+  d'application, à recopier dans la configuration, ou ce n'est pas le bon.
+- **« jeton utilisateur refusé »** : le jeton a été regénéré depuis, ou la
+  connexion avec un jeton externe n'est pas activée (étape 1).
+- **« le profil de l'utilisateur GLPI n'a pas un droit nécessaire »** : le profil
+  ne permet pas de créer un ticket ou d'ajouter un suivi (ou pas dans cette
+  entité).
+- **Les compteurs sont à zéro** : l'utilisateur ne voit pas les tickets (profil
+  Self-Service, ou entité sans les sous-entités).
+- **Le demandeur est vide dans les scènes** : le profil ne permet pas de lire les
+  utilisateurs ; le reste fonctionne.
+
+## Limites
+
+- Un seul GLPI par installation, et un seul appareil pour tous les tickets que
+  voit l'utilisateur (pas d'appareil par entité : utilisez un utilisateur limité
+  à une entité pour n'en suivre qu'une).
+- Les 5 000 tickets les plus récents (ouverts et résolus du jour) sont comptés.
+- « Résolus aujourd'hui » et « en retard » suivent l'heure du serveur GLPI.
+- Pas encore de lecture par la nouvelle API de GLPI 11 (OAuth2) : l'API REST
+  historique suffit et existe dans GLPI 10, 11 et 12.
+- Un ticket ouvert puis résolu entre deux lectures déclenche « Nouveau ticket »
+  mais pas « résolu ».
+
+Cette intégration n'est pas affiliée à Teclib' ni au projet GLPI.

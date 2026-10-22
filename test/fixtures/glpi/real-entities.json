@@ -1,0 +1,12 @@
+{
+  "myentities": [
+    {
+      "id": 1,
+      "name": "Root entity > Site Nord"
+    },
+    {
+      "id": 0,
+      "name": "Root entity"
+    }
+  ]
+}

@@ -1,0 +1,87 @@
+{
+  "bad_user_token": {
+    "status": 401,
+    "body": ["ERROR_GLPI_LOGIN_USER_TOKEN", "parameter user_token seems invalid"]
+  },
+  "app_token_missing": {
+    "status": 400,
+    "body": [
+      "ERROR_APP_TOKEN_PARAMETERS_MISSING",
+      "missing parameter app_token; view documentation in your browser at http://192.0.2.30/api.php/v1/#ERROR_APP_TOKEN_PARAMETERS_MISSING"
+    ]
+  },
+  "bad_app_token": {
+    "status": 400,
+    "body": [
+      "ERROR_WRONG_APP_TOKEN_PARAMETER",
+      "parameter app_token seems wrong; view documentation in your browser at http://192.0.2.30/api.php/v1/#ERROR_WRONG_APP_TOKEN_PARAMETER"
+    ]
+  },
+  "ip_refused": {
+    "status": 400,
+    "body": [
+      "ERROR_NOT_ALLOWED_IP",
+      "There isn't an active API client matching your IP address in the configuration (127.0.0.1)"
+    ]
+  },
+  "api_disabled": {
+    "status": 400,
+    "body": ["ERROR", "API disabled"]
+  },
+  "session_expired": {
+    "status": 400,
+    "body": [
+      "ERROR_SESSION_TOKEN_MISSING",
+      "parameter session_token is missing or empty; view documentation in your browser at http://192.0.2.30/api.php/v1/#ERROR_SESSION_TOKEN_MISSING"
+    ]
+  },
+  "item_not_found": {
+    "status": 404,
+    "body": ["ERROR_ITEM_NOT_FOUND", "Item not found"]
+  },
+  "add_refused": {
+    "status": 400,
+    "body": ["ERROR_GLPI_ADD", "You don't have permission to perform this action."]
+  },
+  "range_exceeded": {
+    "status": 400,
+    "body": [
+      "ERROR_RANGE_EXCEED_TOTAL",
+      "Provided range exceed total count of data: 2; view documentation in your browser at http://192.0.2.30/api.php/v1/#ERROR_RANGE_EXCEED_TOTAL"
+    ]
+  },
+  "created": {
+    "status": 201,
+    "body": {
+      "id": 8,
+      "message": "Item successfully added: Fuite d eau détectée"
+    }
+  },
+  "followup_added": {
+    "status": 201,
+    "body": {
+      "id": 1,
+      "message": ""
+    }
+  },
+  "init_session": {
+    "status": 200,
+    "body": {
+      "session_token": "FAKE-SESSION-TOKEN"
+    }
+  },
+  "kill_session": {
+    "status": 200,
+    "body": true
+  },
+  "empty_search": {
+    "status": 200,
+    "body": {
+      "totalcount": 0,
+      "count": 0,
+      "sort": [0],
+      "order": ["ASC"],
+      "content-range": "0--1/0"
+    }
+  }
+}

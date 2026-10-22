@@ -1,61 +1,175 @@
-# Demo Devices Template
+# GLPI
 
-This is the user documentation of the integration. Gladys re-hosts this file
-and shows a permanent **Documentation** link to it in the Configuration screen
-(in the user's language, with English as the fallback) — it is when
-configuring that the user needs it most. Keep the short onboarding hints in
-the `section` blocks of the manifest `config_schema`; put the long
-step-by-step (screenshots, troubleshooting…) here.
+The tickets of your [GLPI](https://glpi-project.org) in Gladys: how many are
+open, pending, past their SLA, how many were solved today. A scene reacts to a
+new ticket, to a ticket going late or to a ticket solved, and Gladys can **open
+a ticket by itself** when it detects a failure: a water leak, a freezer too
+warm, a printer or an Internet box that stopped answering.
 
-## What you get
+> **Feedback welcome.** This integration was tested against real GLPI servers
+> (the official `glpi/glpi` Docker images 10.0.28, 11.0.11 and 12.0.0, October
+> 2026), not yet day to day in a real service desk. If something does not work
+> as described, say so on the [Gladys forum](https://community.gladysassistant.com)
+> or in the [issues](https://github.com/guim31/gladys-glpi/issues).
 
-Six demo devices show up after installation: a weather station (real data
-from Open-Meteo), a switch, a dimmable light, a smart plug with power
-metering, a motion sensor and a camera.
+## What you need
 
-## Configuration
+- Gladys Assistant 5.1.0 or later.
+- **GLPI 10, 11 or 12**, self-hosted or hosted (GLPI Network Cloud), reachable
+  from Gladys. The integration uses the legacy REST API of GLPI (`apirest.php`),
+  served by these three versions.
+- A **GLPI user** Gladys reads and creates the tickets as. Best create one for
+  it (`gladys`):
+  - with the **Technician** profile (or any profile that sees every ticket) on
+    the entities to follow: the counters then count every ticket of these
+    entities;
+  - or with the **Self-Service** profile: Gladys then only sees the tickets it
+    requested, enough to open failure tickets.
 
-1. Open the **Configuration** tab of the integration.
-2. Set the **latitude** and **longitude** the demo weather station should
-   observe (they default to Paris), and pick your temperature unit.
-   The **refresh interval** sets how often the weather station and the
-   plug's power are read: every 5 minutes by default, every minute at most.
-3. Save: the devices appear in the **Discovery** tab, ready to be added.
+  The integration sees exactly what this user sees in GLPI (its default profile,
+  its entities and their sub-entities).
 
-The **Prefer the local connection** toggle drives the demo plug: it reports
-the channel it actually uses as a badge (local or cloud), with an orange dot
-when it runs degraded (local refused, cloud fallback).
+## Installation
 
-## Actions
+### In GLPI
 
-- **Test the weather provider** — performs a live request to Open-Meteo and
-  shows the current temperature and humidity under the button.
-- **Identify a device** — pick one of your devices in the list and it will
-  signal itself (the demo light "blinks" in the logs).
+1. **Setup** → **General** → **API** tab:
+   - turn on **Enable Legacy REST API** (GLPI 11 and 12) or **Enable Rest API**
+     (GLPI 10);
+   - turn on **Enable login with external token**.
+2. In the **API clients** list of the same tab, allow the address of Gladys: the
+   default client ("full access from localhost") only accepts `127.0.0.1`. Add a
+   client (or edit that one) with the address of the Gladys machine, as GLPI
+   sees it, in **IPv4 address range start** and **end**, or leave the range
+   empty to accept every address. If you fill in an **Application token**
+   (`app_token`), copy it into Gladys.
+3. Open the form of the `gladys` user (or its preferences, logged in as it). At
+   the **API token** field, tick **Regenerate**, save, then copy the token shown.
 
-## Scenes
+### In Gladys
 
-The integration adds its own cards to the scene editor (Gladys 5.1 or
-later), under the **Integrations** category:
+1. **Integrations** → install **GLPI**.
+2. On the **Configuration** screen, fill in:
+   - **Address**: the address of GLPI as in the browser, e.g.
+     `https://helpdesk.example.org` or `http://192.168.1.30/glpi` (the `/glpi`
+     folder is kept, `/front/…` or `/apirest.php` are dropped);
+   - **User token**: the API token copied at step 3;
+   - **Application token**: only if the API client has one;
+   - **Accept self-signed certificates**: for a GLPI on `https://` with a
+     self-signed certificate;
+   - **Refresh interval**: 1, 2, 5 (default) or 10 minutes;
+   - **Language of the feature names**: the language of the names given to the
+     device and of the texts sent to scenes (urgency, type, status).
+3. **Test the connection** tells the version of GLPI, the user and its profile,
+   and the number of open tickets.
+4. **Discovery** tab: add the **GLPI** device.
 
-- **Motion detected** (trigger) — starts the scene when a demo motion sensor
-  sees something move. Optionally pick the sensor and what moved (person,
-  animal); left empty, any detection matches. The following actions can
-  read what moved with `{{triggerEvent.data.target}}`.
-- **Identify a device** (action) — makes the chosen device signal itself.
-  It returns whether the device could signal itself, so the following
-  actions can depend on it.
+## Device
+
+One **GLPI** device, with six counters updated at every reading:
+
+| Feature              | What it counts                                                     |
+| -------------------- | ------------------------------------------------------------------ |
+| Open tickets         | tickets not solved: new, in progress and pending                   |
+| New tickets          | tickets with the New status                                        |
+| Tickets in progress  | tickets in progress (assigned or planned)                          |
+| Pending tickets      | pending tickets                                                    |
+| Late tickets         | open tickets past their time to resolve (SLA)                      |
+| Tickets solved today | tickets solved (or solved then closed) since midnight, server time |
+
+"Late" is the **Time to resolve exceeded** computed by GLPI itself: a ticket
+without a time to resolve is never late. The counters keep their history, and
+serve as conditions in scenes ("if Late tickets is above 0").
 
 ## Dashboard
 
-Add the **Demo status** widget to a dashboard: it shows the live
-temperature of the weather station and the power of the office plug, the
-connection the plug currently uses (orange when degraded) and the observed
-location. Its **Identify the light** button makes the demo light signal
-itself.
+The **Latest GLPI tickets** widget shows three tiles (open, late, new) and the
+eight newest open tickets, with their status, urgency and entity. A late ticket
+carries the "Late" badge, a ticket of high or very high urgency the badge of its
+urgency. When GLPI is on `https://`, each ticket offers an **Open in GLPI** link.
+
+## Scenes
+
+### Triggers
+
+The three triggers filter by **Urgency** (one or several, empty: any) and by
+**Type** (incident or request, empty: any).
+
+- **New GLPI ticket**: a ticket was opened in GLPI, by a user, a mail collector
+  or a form. The tickets created by Gladys itself fire nothing (no loop).
+- **GLPI ticket late**: an open ticket just passed its time to resolve.
+- **GLPI ticket solved**: a ticket open at the previous reading is now solved or
+  closed.
+
+Variables passed to the actions: ticket number, title, urgency (1 to 5 and in
+words), type, status, category, entity, requester, time to resolve, link to the
+ticket, and the resolution date for a solved ticket. The dates are the ones GLPI
+shows (time of the GLPI server).
+
+The events are detected at every reading: they arrive at most one refresh
+interval after the facts. At the very first reading (or after a change of server
+or user), the integration takes note of what exists without firing anything. A
+reading fires 30 events at most (a mass import does not flood Gladys).
+
+### Actions
+
+- **Create a GLPI ticket**: opens a ticket as the user of the token, who is its
+  requester. Fields: **Title** (required), **Description** (empty: the title;
+  scene variables are welcome), **Urgency** (empty: medium), **Type** (empty:
+  incident), **Category** (name or number, optional) and **Entity** (name or
+  number, empty: the default entity of the user). Outputs: the ticket number and
+  its link.
+- **Add a follow-up to a GLPI ticket**: adds a follow-up to the ticket given by
+  its number (`125` or `#125`), as the user of the token. The number may come
+  from a "Create a GLPI ticket" earlier in the scene, or from the trigger.
+  Outputs: the number and the title of the ticket.
+
+A category or an entity is given by its number, its complete name
+(`Root entity > Site Nord`) or the last part of that name (`Site Nord`), case
+and accents ignored.
+
+### Scene ideas
+
+- **Water leak**: the leak sensor of the boiler room reports a leak → **Create a
+  GLPI ticket** "Water leak in the boiler room", very high urgency, category
+  "Building", description with the time; then a Gladys message with the link to
+  the ticket.
+- **Internet box down**: the ping of the box fails for 10 minutes → ticket "No
+  Internet at the office"; when the ping is back, **Add a follow-up** "Back
+  online at 2:32 pm" to the same ticket.
+- **On call**: **New GLPI ticket** filtered on high and very high urgencies → a
+  Telegram message to the technician on call with the title, the requester and
+  the link; **GLPI ticket late** → turn the open-space lamp red.
 
 ## Troubleshooting
 
-The integration logs everything it does: check the integration logs from the
-Gladys UI (or `docker logs` on the host) with `LOG_LEVEL=debug` for the full
-detail.
+- **"no GLPI API at this address"**: check the address (with the `/glpi` folder
+  if any) by opening `…/apirest.php` in a browser: GLPI answers with its API
+  documentation page.
+- **"the REST API is off"**: see step 1 in GLPI.
+- **"no API client accepts the address of Gladys"**: the address range of the API
+  client (step 2) does not hold the address of Gladys as GLPI sees it (behind a
+  proxy or a NAT, the address of that proxy or router).
+- **"application token missing or wrong"**: the API client has an application
+  token, to copy into the configuration, or it is not that one.
+- **"user token refused"**: the token was regenerated since, or login with an
+  external token is off (step 1).
+- **"the profile of the GLPI user lacks a right"**: the profile may not create a
+  ticket or add a follow-up (or not in that entity).
+- **The counters stay at zero**: the user does not see the tickets (Self-Service
+  profile, or an entity without its sub-entities).
+- **The requester is empty in scenes**: the profile may not read users; the rest
+  works.
+
+## Limits
+
+- One GLPI per installation, and one device for every ticket the user sees (no
+  device per entity: use a user limited to one entity to follow only that one).
+- The 5,000 newest tickets (open, and solved today) are counted.
+- "Solved today" and "late" follow the time of the GLPI server.
+- Not yet on the new API of GLPI 11 (OAuth2): the legacy REST API is enough and
+  exists in GLPI 10, 11 and 12.
+- A ticket opened then solved between two readings fires "New GLPI ticket" but
+  not "solved".
+
+This integration is not affiliated with Teclib' or the GLPI project.
