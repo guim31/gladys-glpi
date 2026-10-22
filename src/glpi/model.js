@@ -24,7 +24,24 @@ export const STATUS = Object.freeze({
 const OPEN_STATUSES = new Set([STATUS.NEW, STATUS.ASSIGNED, STATUS.PLANNED, STATUS.PENDING]);
 export const isOpen = (ticket) => OPEN_STATUSES.has(ticket.status);
 
-const text = (value) => (typeof value === 'string' ? value.trim() : '');
+const NAMED = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
+
+/**
+ * GLPI 10 stores and returns names HTML-encoded (`Root entity &#62; Site
+ * Nord`, `Imprimante &#60;RDC&#62; &#38; café`); 11 and 12 do not. Decoded
+ * once, here, for every text read from GLPI.
+ */
+export const decodeHtml = (value) =>
+  value.replace(/&(#\d{1,7}|#x[\da-f]{1,6}|[a-z]+);/gi, (entity, code) => {
+    if (code[0] === '#') {
+      const point =
+        code[1] === 'x' || code[1] === 'X' ? parseInt(code.slice(2), 16) : Number(code.slice(1));
+      return point > 0 && point <= 0x10ffff ? String.fromCodePoint(point) : entity;
+    }
+    return NAMED[code.toLowerCase()] ?? entity;
+  });
+
+export const text = (value) => (typeof value === 'string' ? decodeHtml(value).trim() : '');
 const int = (value) => {
   const number = Number(value);
   return Number.isInteger(number) ? number : 0;
@@ -32,7 +49,7 @@ const int = (value) => {
 /** A dropdown cell holds one value, or an array when several (two requesters). */
 const list = (value) =>
   (Array.isArray(value) ? value : [value])
-    .map((item) => (item === null || item === undefined ? '' : String(item).trim()))
+    .map((item) => (item === null || item === undefined ? '' : text(String(item))))
     .filter(Boolean);
 
 /**

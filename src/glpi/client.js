@@ -107,6 +107,10 @@ function networkError(err) {
   if (TLS_CODES.has(err.code)) {
     return new GlpiError(ERROR_KINDS.TLS, `Certificate refused (${err.code})`);
   }
+  if (String(err.code ?? '').startsWith('HPE_')) {
+    // Something answers on that port, but not in HTTP (a database, SSH…).
+    return new GlpiError(ERROR_KINDS.NOT_GLPI, `${err.code}`);
+  }
   return new GlpiError(ERROR_KINDS.UNREACHABLE, err.code ? `${err.code}` : err.message);
 }
 

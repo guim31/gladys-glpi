@@ -25,6 +25,7 @@ import {
   parseTicketNumber,
   parseTickets,
   summarize,
+  text,
   ticketUrl,
   toHtml,
   userName,
@@ -606,7 +607,7 @@ export class GlpiHub {
       .filter((category) => Number.isInteger(category?.id) && category.id > 0)
       .map((category) => ({
         id: category.id,
-        name: String(category.completename || category.name || ''),
+        name: text(category.completename) || text(category.name),
       }));
     const { item, reason } = findByIdOrName(categories, query);
     if (!item) {
@@ -618,7 +619,7 @@ export class GlpiHub {
   async findEntity(query) {
     const entities = (await this.requireClient().entities())
       .filter((entity) => Number.isInteger(entity?.id) && entity.id >= 0)
-      .map((entity) => ({ id: entity.id, name: String(entity.name ?? '') }));
+      .map((entity) => ({ id: entity.id, name: text(entity.name) }));
     const { item, reason } = findByIdOrName(entities, query);
     if (!item) {
       throw this.fail(reason === 'ambiguous' ? 'entityAmbiguous' : 'entityNotFound');
@@ -695,7 +696,7 @@ export class GlpiHub {
     logger.info(`Follow-up added to ticket #${id} from Gladys`);
     return {
       id,
-      title: String(ticket?.name ?? '').trim() || `#${id}`,
+      title: text(ticket?.name) || `#${id}`,
       url: ticketUrl(this.config.url, id),
     };
   }

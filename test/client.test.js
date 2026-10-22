@@ -10,6 +10,7 @@ import { readFile } from 'node:fs/promises';
 import { normalizeConfig, parseServerUrl } from '../src/config.js';
 import { ERROR_KINDS, GlpiClient, PAGE_SIZE, ticketSearchQuery } from '../src/glpi/client.js';
 import {
+  decodeHtml,
   findByIdOrName,
   parseTicketNumber,
   parseTickets,
@@ -264,4 +265,29 @@ test('helpers: ticket numbers, text to HTML, user names', async () => {
   );
   assert.equal(userName(await fixture('real-user')), 'Marie Durand');
   assert.equal(userName({ name: 'm.durand' }), 'm.durand');
+});
+
+test('GLPI 10 encodes names in HTML: decoded for the lookups and the texts', async () => {
+  // Real answers of GLPI 10.0.28: getMyEntities, and a search row of a ticket
+  // titled `Imprimante <RDC> & café "test" l’été`.
+  const entities = (await fixture('real-entities-10')).myentities;
+  assert.equal(entities[0].name, 'Root entity &#62; Site Nord');
+  const decoded = entities.map((entity) => ({ id: entity.id, name: decodeHtml(entity.name) }));
+  assert.equal(findByIdOrName(decoded, 'Site Nord').item.id, 1);
+  const [ticket] = parseTickets([
+    { 2: 7, 1: 'Imprimante &#60;RDC&#62; &#38; café "test" l’été', 80: 'Root entity', 7: null },
+  ]);
+  assert.equal(ticket.title, 'Imprimante <RDC> & café "test" l’été');
+  assert.equal(decodeHtml('a &amp;lt; b &#x3E; c &unknown; &#0;'), 'a &lt; b > c &unknown; &#0;');
+});
+
+test('something that is not HTTP on that port is not GLPI', async () => {
+  const garbage = async () => {
+    const err = new Error('Parse Error');
+    err.code = 'HPE_INVALID_CONSTANT';
+    throw err;
+  };
+  await assert.rejects(new GlpiClient({ url: URL_1, userToken: 'x', request: garbage }).session(), {
+    kind: ERROR_KINDS.NOT_GLPI,
+  });
 });

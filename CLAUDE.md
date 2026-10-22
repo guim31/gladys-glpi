@@ -228,6 +228,9 @@ installées en ligne de commande (`php bin/console db:install … -n --no-teleme
   demandeur (champ 4) est un id, ou un **tableau** d'ids s'il y en a plusieurs : nom lu par `GET /User/:id`.
 - **Création** : sans `_users_id_requester`, un ticket créé par l'API n'a **aucun demandeur** ; une catégorie
   inexistante est acceptée en silence (d'où la résolution par nom ou numéro avant) ; un titre vide aussi.
+- **GLPI 10 encode les noms en HTML** dans ses réponses (`Root entity &#62; Site Nord`, `&#38;`, `&#60;`) ; 11
+  et 12 non. Tout texte lu de GLPI passe par `decodeHtml` (`text()` du modèle), sinon la recherche d'une
+  entité par nom échoue sur GLPI 10 (constaté en Docker).
 - **Suivi sur un ticket inexistant** : 400 `ERROR_GLPI_ADD` « You don't have permission », pas 404 : le
   ticket est lu avant.
 - **Pas de boucle** : un ticket créé par l'action de scène n'est jamais annoncé par « Nouveau ticket GLPI ».
