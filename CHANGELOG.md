@@ -10,6 +10,8 @@ the notes of the version's GitHub Release.
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-22
+
 ### Added
 
 - GLPI 10, 11 and 12 in Gladys, through the legacy REST API with a user token
@@ -26,4 +28,5 @@ the notes of the version's GitHub Release.
 - A "Test the connection" action, and the documentation in English, French,
   German and Spanish.
 
-[Unreleased]: https://github.com/guim31/gladys-glpi/commits/main
+[Unreleased]: https://github.com/guim31/gladys-glpi/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/guim31/gladys-glpi/releases/tag/v1.0.0
